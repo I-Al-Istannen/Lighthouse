@@ -73,28 +73,40 @@ public class DiscordNotifier implements Notifier {
   }
 
   private ObjectNode buildEmbed(ShipItContainerUpdate update) {
-    ImageInformation remoteImageInfo = update.imageUpdate().remoteImageInfo();
+    ShipItImageUpdate imageUpdate = update.imageUpdate();
+    ImageInformation remoteImageInfo = imageUpdate.remoteImageInfo();
 
     ObjectNode embed = objectMapper.createObjectNode();
     embed.set("title", new TextNode(remoteImageInfo.imageName() + ":" + remoteImageInfo.tag()));
-    embed.set("description", new TextNode("Update found."));
+    embed.set("description", new TextNode(getUpdateText(imageUpdate)));
     embed.set(
       "url",
       new TextNode("https://hub.docker.com/r/%s" .formatted(remoteImageInfo.imageName()))
     );
     embed.set("timestamp", new TextNode(remoteImageInfo.lastUpdated().toString()));
-    embed.set("color", new IntNode(0xff6347)); // Tomato
+    embed.set("color", new IntNode(imageUpdate.updateKind().getColor()));
     embed.set("footer", buildFooter());
 
     ArrayNode fields = objectMapper.createArrayNode();
     fields.add(buildContainerNamesField(update));
-    fields.add(buildImageNamesField(update.imageUpdate()));
-    fields.add(buildUpdaterField(update.imageUpdate().remoteImageInfo()));
-    fields.add(buildRemoteImageIdField(update.imageUpdate()));
+    fields.add(buildImageNamesField(imageUpdate));
+    fields.add(buildUpdaterField(imageUpdate.remoteImageInfo()));
+    fields.add(buildRemoteImageIdField(imageUpdate));
 
     embed.set("fields", fields);
 
     return embed;
+  }
+
+  private String getUpdateText(ShipItImageUpdate imageUpdate) {
+    String text = "Update found. ";
+
+    text += switch (imageUpdate.updateKind()) {
+      case CONTAINER_USES_OUTDATED_BASE_IMAGE -> "The base image the container uses is outdated";
+      case REFERENCE_IMAGE_IS_OUTDATED -> "The reference image is outdated, please pull it again";
+    };
+
+    return text;
   }
 
   private ObjectNode buildContainerNamesField(ShipItContainerUpdate update) {

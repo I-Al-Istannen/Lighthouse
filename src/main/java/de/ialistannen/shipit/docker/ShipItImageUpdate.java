@@ -7,7 +7,8 @@ public record ShipItImageUpdate(
   String sourceImageId,
   List<String> sourceImageNames,
   String remoteImageId,
-  ImageInformation remoteImageInfo
+  ImageInformation remoteImageInfo,
+  UpdateKind updateKind
 ) {
 
 }

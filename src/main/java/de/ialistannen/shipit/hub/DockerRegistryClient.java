@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import de.ialistannen.shipit.library.LibraryHelper;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -24,11 +25,13 @@ public class DockerRegistryClient {
 
   private final HttpClient client;
   private final ObjectMapper objectMapper;
+  private final LibraryHelper libraryHelper;
   private Cache<String, String> cache;
   private Duration currentAssumedTokenLifetime;
 
-  public DockerRegistryClient(HttpClient client) {
+  public DockerRegistryClient(HttpClient client, LibraryHelper libraryHelper) {
     this.client = client;
+    this.libraryHelper = libraryHelper;
     this.objectMapper = new ObjectMapper().findAndRegisterModules();
     this.currentAssumedTokenLifetime = Duration.ofSeconds(300);
     this.cache = buildCache();
@@ -46,6 +49,10 @@ public class DockerRegistryClient {
     String[] parts = repoTag.split(":");
     String image = parts[0];
     String tag = parts[1];
+
+    if (libraryHelper.isLibraryImage(image)) {
+      image = "library/" + image;
+    }
 
     String url = "https://hub.docker.com/v2/repositories/%s/tags/%s/" .formatted(image, tag);
     HttpRequest request = HttpRequest.newBuilder(new URI(url)).GET().build();
@@ -65,16 +72,13 @@ public class DockerRegistryClient {
     String image = parts[0];
     String tag = parts[1];
 
+    if (libraryHelper.isLibraryImage(image)) {
+      image = "library/" + image;
+    }
+
     String token = cache.get(image, this::fetchTokenSilent);
 
-    try {
-      return fetchImageDigestForTag(image, tag, token);
-    } catch (DigestFetchException e) {
-      if (repoTag.startsWith("library/")) {
-        throw e;
-      }
-      return fetchImageDigestForTag("library/" + repoTag);
-    }
+    return fetchImageDigestForTag(image, tag, token);
   }
 
   private String fetchImageDigestForTag(String image, String tag, String token)

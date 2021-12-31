@@ -7,6 +7,7 @@ import de.ialistannen.shipit.docker.ContainerUpdateChecker;
 import de.ialistannen.shipit.docker.ImageUpdateChecker;
 import de.ialistannen.shipit.docker.ShipItContainerUpdate;
 import de.ialistannen.shipit.hub.DockerRegistryClient;
+import de.ialistannen.shipit.library.LibraryHelper;
 import de.ialistannen.shipit.notifier.DiscordNotifier;
 import java.io.IOException;
 import java.net.URI;
@@ -22,7 +23,7 @@ public class Main {
     DefaultDockerClientConfig.Builder config = DefaultDockerClientConfig.createDefaultConfigBuilder();
     DockerClient dockerClient = DockerClientBuilder.getInstance(config.build()).build();
 
-    DockerRegistryClient registryClient = new DockerRegistryClient(httpClient);
+    DockerRegistryClient registryClient = new DockerRegistryClient(httpClient, new LibraryHelper());
 
     ImageUpdateChecker imageUpdateChecker = new ImageUpdateChecker(dockerClient, registryClient);
     ContainerUpdateChecker containerUpdateChecker = new ContainerUpdateChecker(dockerClient);
