@@ -58,15 +58,19 @@ OPTIONS
 
 ### Example
 ```
-docker run                                      \
-  --rm                                          \
-  -v /var/run/docker.sock:/var/run/docker.sock  \
-  --restart always                              \
-  ghcr.io/i-al-istannen/lighthouse:latest       \
-  <discord webhook url>                         \
-  --mention-user-id 12345678                    \
+docker run                                                \
+  --rm                                                    \
+  -v /var/run/docker.sock:/var/run/docker.sock            \
+  -v /root/.docker/config.json:/root/.docker/config.json  \
+  --restart always                                        \
+  ghcr.io/i-al-istannen/lighthouse:latest                 \
+  <discord webhook url>                                   \
+  --mention-user-id 12345678                              \
   --mention-text "A wild update appeared!"
 ```
+The root config was mounted through as it contained authentication credentials
+for registries. If you store those in a different config, pass that one along
+instead.
 
 You also need to ensure you label all your containers with `lighthouse.base`,
 e.g. `lighthouse.base=nginx:stable`.
