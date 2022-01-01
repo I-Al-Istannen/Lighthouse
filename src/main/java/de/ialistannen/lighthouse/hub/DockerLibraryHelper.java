@@ -1,34 +1,93 @@
 package de.ialistannen.lighthouse.hub;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse.BodyHandlers;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class DockerLibraryHelper {
 
-  private final Path libraryFolder;
+  private final Set<String> libraryImages;
 
-  public DockerLibraryHelper() throws IOException {
-    libraryFolder = Files.createTempDirectory("lighthouse-official-libraries");
-
-    cloneLibrary();
+  public DockerLibraryHelper(HttpClient client) throws IOException, URISyntaxException, InterruptedException {
+    this.libraryImages = fetchImages(client);
   }
 
-  private void cloneLibrary() throws IOException {
-    try {
-      Git.cloneRepository()
-        .setURI("https://github.com/docker-library/official-images")
-        .setDirectory(libraryFolder.toFile())
-        .setCloneSubmodules(false)
-        .call();
-    } catch (GitAPIException e) {
-      throw new IOException("Error cloning repo", e);
+  private Set<String> fetchImages(HttpClient client) throws IOException, URISyntaxException, InterruptedException {
+    HttpRequest request = HttpRequest.newBuilder(
+        new URI("https://api.github.com/repos/docker-library/official-images/contents/library")
+      )
+      .header("Accept", "application/vnd.github.v3+json")
+      .build();
+
+    String jsonBody = client.send(request, BodyHandlers.ofString()).body();
+
+    return StreamSupport.stream(new ObjectMapper().readValue(jsonBody, ArrayNode.class).spliterator(), false)
+      .map(it -> it.get("path").asText())
+      .collect(Collectors.toSet());
+  }
+
+  /**
+   * Returns the normalized image name, with the registry and "library/" prefixes prepended as needed.
+   *
+   * @param image the image name
+   * @return the normalized image name
+   */
+  public String normalizeImageName(String image) {
+    String result = image;
+    if (isLibraryImage(image)) {
+      result = "library/" + result;
     }
+
+    if (!image.matches("(.+\\..+/).+")) {
+      result = "docker.io/" + result;
+    }
+
+    if (result.startsWith("docker.io")) {
+      result = result.replaceFirst("docker\\.io", "index.docker.io");
+    }
+
+    return result;
   }
 
-  public boolean isLibraryImage(String image) {
-    return Files.exists(libraryFolder.resolve("library").resolve(image));
+  /**
+   * Returns the normalized image name without the registry.
+   *
+   * @param image the image
+   * @return the name without the registry
+   */
+  public String getImageNameWithoutRegistry(String image) {
+    String name = normalizeImageName(image);
+    return name.substring(name.indexOf('/') + 1);
+  }
+
+  /**
+   * Returns the scope for auth requests for a given image.
+   *
+   * @param image the image
+   * @return the scope for it
+   */
+  public String getScopeForImage(String image) {
+    String normalizedName = normalizeImageName(image);
+    normalizedName = normalizedName.substring(normalizedName.indexOf('/') + 1);
+
+    return normalizedName;
+  }
+
+  private boolean isLibraryImage(String image) {
+    if (image.startsWith("docker.io/")) {
+      return isLibraryImage(image.replaceFirst("docker.io/", ""));
+    }
+    if (image.startsWith("index.docker.io/")) {
+      return isLibraryImage(image.replaceFirst("index.docker.io/", ""));
+    }
+    return libraryImages.contains(image);
   }
 }

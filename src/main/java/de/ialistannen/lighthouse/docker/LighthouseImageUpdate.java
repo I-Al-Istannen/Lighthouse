@@ -1,7 +1,8 @@
 package de.ialistannen.lighthouse.docker;
 
-import de.ialistannen.lighthouse.hub.ImageInformation;
+import de.ialistannen.lighthouse.registry.RemoteImageMetadata;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Information about an available image update.
@@ -10,7 +11,9 @@ public record LighthouseImageUpdate(
   String sourceImageId,
   List<String> sourceImageNames,
   String remoteImageId,
-  ImageInformation remoteImageInfo
+  String imageName,
+  String tag,
+  Optional<RemoteImageMetadata> remoteImageMetadata
 ) {
 
 }

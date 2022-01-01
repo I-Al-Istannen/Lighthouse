@@ -8,7 +8,8 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectImageResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.Container;
-import de.ialistannen.lighthouse.hub.DockerRegistryClient;
+import de.ialistannen.lighthouse.registry.DockerRegistry;
+import de.ialistannen.lighthouse.registry.MetadataFetcher;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -31,11 +32,13 @@ public class ImageUpdateChecker {
   private static final Logger LOGGER = LoggerFactory.getLogger(ImageUpdateChecker.class);
 
   private final DockerClient client;
-  private final DockerRegistryClient dockerRegistryClient;
+  private final DockerRegistry dockerRegistry;
+  private final MetadataFetcher metadataFetcher;
 
-  public ImageUpdateChecker(DockerClient client, DockerRegistryClient dockerRegistryClient) {
+  public ImageUpdateChecker(DockerClient client, DockerRegistry dockerRegistry, MetadataFetcher metadataFetcher) {
     this.client = client;
-    this.dockerRegistryClient = dockerRegistryClient;
+    this.dockerRegistry = dockerRegistry;
+    this.metadataFetcher = metadataFetcher;
   }
 
   /**
@@ -78,7 +81,9 @@ public class ImageUpdateChecker {
           info.container().getImageId(),
           info.containerImage().getRepoTags(),
           info.currentRemoteDigest(),
-          dockerRegistryClient.fetchImageInformationForTag(getBaseRepoTag(info.container()))
+          getImage(info.container()),
+          getTag(info.container()),
+          metadataFetcher.fetch(getImage(info.container()), getTag(info.container()))
         )
       );
     }
@@ -117,7 +122,7 @@ public class ImageUpdateChecker {
 
       foo.add(new ContainerWithRemoteInfo(
         participatingContainer,
-        dockerRegistryClient.fetchImageDigestForTag(getBaseRepoTag(participatingContainer)),
+        dockerRegistry.getDigest(getImage(participatingContainer), getTag(participatingContainer)),
         inspect,
         client.inspectImageCmd(participatingContainer.getImageId()).exec()
       ));

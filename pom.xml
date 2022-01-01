@@ -111,12 +111,6 @@
     </dependency>
 
     <dependency>
-      <groupId>org.eclipse.jgit</groupId>
-      <artifactId>org.eclipse.jgit</artifactId>
-      <version>6.0.0.202111291000-r</version>
-    </dependency>
-
-    <dependency>
       <groupId>io.github.jbock-java</groupId>
       <artifactId>jbock</artifactId>
       <version>${jbock.version}</version>

@@ -9,8 +9,9 @@ import de.ialistannen.lighthouse.docker.ContainerUpdateChecker;
 import de.ialistannen.lighthouse.docker.ImageUpdateChecker;
 import de.ialistannen.lighthouse.docker.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.hub.DockerLibraryHelper;
-import de.ialistannen.lighthouse.hub.DockerRegistryClient;
 import de.ialistannen.lighthouse.notifier.DiscordNotifier;
+import de.ialistannen.lighthouse.registry.DockerHubMetadataFetcher;
+import de.ialistannen.lighthouse.registry.DockerRegistry;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -25,7 +26,7 @@ public class Main {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
-  public static void main(String[] args) throws IOException, URISyntaxException {
+  public static void main(String[] args) throws IOException, URISyntaxException, InterruptedException {
     CliArguments arguments = new CliArgumentsParser().parseOrExit(args);
     int checkFrequencySeconds = arguments.checkIntervalSeconds().orElse((int) TimeUnit.HOURS.toSeconds(12));
 
@@ -34,9 +35,11 @@ public class Main {
     DefaultDockerClientConfig.Builder config = DefaultDockerClientConfig.createDefaultConfigBuilder();
     DockerClient dockerClient = DockerClientBuilder.getInstance(config.build()).build();
 
-    DockerRegistryClient registryClient = new DockerRegistryClient(httpClient, new DockerLibraryHelper());
+    DockerLibraryHelper libraryHelper = new DockerLibraryHelper(httpClient);
+    DockerRegistry dockerRegistry = new DockerRegistry(libraryHelper, httpClient);
+    DockerHubMetadataFetcher metadataFetcher = new DockerHubMetadataFetcher(libraryHelper, httpClient);
 
-    ImageUpdateChecker imageUpdateChecker = new ImageUpdateChecker(dockerClient, registryClient);
+    ImageUpdateChecker imageUpdateChecker = new ImageUpdateChecker(dockerClient, dockerRegistry, metadataFetcher);
     ContainerUpdateChecker containerUpdateChecker = new ContainerUpdateChecker(dockerClient, imageUpdateChecker);
 
     DiscordNotifier notifier = new DiscordNotifier(

@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.Throwables;
 import de.ialistannen.lighthouse.docker.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.docker.LighthouseImageUpdate;
-import de.ialistannen.lighthouse.hub.ImageInformation;
+import de.ialistannen.lighthouse.registry.RemoteImageMetadata;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -121,23 +121,26 @@ public class DiscordNotifier implements Notifier {
 
   private ObjectNode buildEmbed(LighthouseContainerUpdate update) {
     LighthouseImageUpdate imageUpdate = update.imageUpdate();
-    ImageInformation remoteImageInfo = imageUpdate.remoteImageInfo();
 
     ObjectNode embed = objectMapper.createObjectNode();
-    embed.set("title", new TextNode(remoteImageInfo.imageName() + ":" + remoteImageInfo.tag()));
+    embed.set("title", new TextNode(imageUpdate.imageName() + ":" + imageUpdate.tag()));
     embed.set("description", new TextNode("Update found."));
     embed.set(
       "url",
-      new TextNode("https://hub.docker.com/r/%s".formatted(remoteImageInfo.imageName()))
+      new TextNode("https://hub.docker.com/r/%s".formatted(imageUpdate.imageName()))
     );
-    embed.set("timestamp", new TextNode(remoteImageInfo.lastUpdated().toString()));
     embed.set("color", new IntNode(0xFF6347));
     embed.set("footer", buildFooter());
 
     ArrayNode fields = objectMapper.createArrayNode();
     fields.add(buildContainerNamesField(update));
     fields.add(buildImageNamesField(imageUpdate));
-    fields.add(buildUpdaterField(imageUpdate.remoteImageInfo()));
+
+    imageUpdate.remoteImageMetadata().ifPresent(metadata -> {
+      fields.add(buildUpdaterField(metadata));
+      embed.set("timestamp", new TextNode(metadata.updateTime().toString()));
+    });
+
     fields.add(buildRemoteImageIdField(imageUpdate));
 
     embed.set("fields", fields);
@@ -161,15 +164,15 @@ public class DiscordNotifier implements Notifier {
     return imageNames;
   }
 
-  private ObjectNode buildUpdaterField(ImageInformation imageInfo) {
+  private ObjectNode buildUpdaterField(RemoteImageMetadata metadata) {
     ObjectNode updaterInfo = objectMapper.createObjectNode();
     updaterInfo.set("name", new TextNode("Update information"));
     updaterInfo.set(
       "value",
       new TextNode(
         "Updated <t:%s:R> by **%s**".formatted(
-          imageInfo.lastUpdated().getEpochSecond(),
-          imageInfo.lastUpdaterName()
+          metadata.updateTime().getEpochSecond(),
+          metadata.updatedBy()
         )
       )
     );
