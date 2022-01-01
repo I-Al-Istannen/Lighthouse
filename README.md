@@ -34,7 +34,10 @@ is based on an outdated image, it will notify you in discord.
 - Keep a reference copy of the container's base image up-to-date
 - Notify you through a discord webhook if a container is based on an oudated
   base image
-
+- Supports metadata (who and when updated the image?) for Docker Hub images
+- Supports checking for updates for images from arbitrary registries (if they
+  conform to standards and/or you have basic auth credentials for them in your
+  config)
 
 ## Usage
 ```
@@ -50,6 +53,7 @@ OPTIONS
   --check-interval-seconds CHECK-INTERVAL-SECONDS  Check interval in seconds
   --mention-user-id MENTION-USER-ID                Discord user id to mention
   --mention-text MENTION-TEXT                      Text to send in Discord
+  --docker-config DOCKER-CONFIG                    Path to docker config
 ```
 
 ### Example
