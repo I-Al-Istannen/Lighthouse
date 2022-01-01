@@ -18,6 +18,7 @@ import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.util.List;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,10 +32,19 @@ public class DiscordNotifier implements Notifier {
   private final HttpClient httpClient;
   private final URI url;
   private final ObjectMapper objectMapper;
+  private final Optional<String> mentionUserId;
+  private final Optional<String> mentionText;
 
-  public DiscordNotifier(HttpClient httpClient, URI url) {
+  public DiscordNotifier(
+    HttpClient httpClient,
+    URI url,
+    Optional<String> mentionUserId,
+    Optional<String> mentionText
+  ) {
     this.httpClient = httpClient;
     this.url = url;
+    this.mentionUserId = mentionUserId;
+    this.mentionText = mentionText;
     this.objectMapper = new ObjectMapper();
   }
 
@@ -73,6 +83,15 @@ public class DiscordNotifier implements Notifier {
 
   private void sendPayload(ObjectNode payload) {
     try {
+      payload.set(
+        "avatar_url",
+        new TextNode("https://github.com/I-Al-Istannen/Lighthouse/blob/master/media/lighthouse.png?raw=true")
+      );
+      mentionUserId.ifPresent(id -> payload.set(
+        "content",
+        new TextNode("Hey, <@" + id + "> " + mentionText.orElse("I got some news!"))
+      ));
+
       HttpRequest request = HttpRequest.newBuilder(url)
         .POST(BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
         .header("Content-Type", "application/json")
@@ -110,7 +129,7 @@ public class DiscordNotifier implements Notifier {
     embed.set("description", new TextNode("Update found."));
     embed.set(
       "url",
-      new TextNode("https://hub.docker.com/r/%s" .formatted(remoteImageInfo.imageName()))
+      new TextNode("https://hub.docker.com/r/%s".formatted(remoteImageInfo.imageName()))
     );
     embed.set("timestamp", new TextNode(remoteImageInfo.lastUpdated().toString()));
     embed.set("color", new IntNode(0xFF6347));
@@ -149,7 +168,7 @@ public class DiscordNotifier implements Notifier {
     updaterInfo.set(
       "value",
       new TextNode(
-        "Updated <t:%s:R> by **%s**" .formatted(
+        "Updated <t:%s:R> by **%s**".formatted(
           imageInfo.lastUpdated().getEpochSecond(),
           imageInfo.lastUpdaterName()
         )

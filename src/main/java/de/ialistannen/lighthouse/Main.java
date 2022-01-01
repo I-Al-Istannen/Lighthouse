@@ -3,6 +3,8 @@ package de.ialistannen.lighthouse;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
+import de.ialistannen.lighthouse.cli.CliArguments;
+import de.ialistannen.lighthouse.cli.CliArgumentsParser;
 import de.ialistannen.lighthouse.docker.ContainerUpdateChecker;
 import de.ialistannen.lighthouse.docker.ImageUpdateChecker;
 import de.ialistannen.lighthouse.docker.LighthouseContainerUpdate;
@@ -24,14 +26,8 @@ public class Main {
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
   public static void main(String[] args) throws IOException, URISyntaxException {
-    if (args.length < 1 || args.length > 2) {
-      System.err.println("Usage: <this program> <discord webhook url> [check frequency in seconds]");
-      System.exit(1);
-    }
-    int checkFrequencySeconds = (int) TimeUnit.HOURS.toSeconds(6);
-    if (args.length == 2) {
-      checkFrequencySeconds = Integer.parseInt(args[1]);
-    }
+    CliArguments arguments = new CliArgumentsParser().parseOrExit(args);
+    int checkFrequencySeconds = arguments.checkIntervalSeconds().orElse((int) TimeUnit.HOURS.toSeconds(12));
 
     HttpClient httpClient = HttpClient.newBuilder().build();
 
@@ -43,7 +39,12 @@ public class Main {
     ImageUpdateChecker imageUpdateChecker = new ImageUpdateChecker(dockerClient, registryClient);
     ContainerUpdateChecker containerUpdateChecker = new ContainerUpdateChecker(dockerClient, imageUpdateChecker);
 
-    DiscordNotifier notifier = new DiscordNotifier(httpClient, new URI(args[0]));
+    DiscordNotifier notifier = new DiscordNotifier(
+      httpClient,
+      new URI(arguments.webhookUrl()),
+      arguments.mentionUserId(),
+      arguments.mentionText()
+    );
 
     //noinspection InfiniteLoopStatement
     while (true) {
