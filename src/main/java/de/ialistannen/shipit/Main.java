@@ -6,39 +6,45 @@ import com.github.dockerjava.core.DockerClientBuilder;
 import de.ialistannen.shipit.docker.ContainerUpdateChecker;
 import de.ialistannen.shipit.docker.ImageUpdateChecker;
 import de.ialistannen.shipit.docker.ShipItContainerUpdate;
+import de.ialistannen.shipit.hub.DockerLibraryHelper;
 import de.ialistannen.shipit.hub.DockerRegistryClient;
-import de.ialistannen.shipit.library.LibraryHelper;
 import de.ialistannen.shipit.notifier.DiscordNotifier;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Main {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+
   public static void main(String[] args) throws IOException, URISyntaxException, InterruptedException {
+    if (args.length != 1) {
+      System.err.println("Usage: <this program> <discord webhook url>");
+      System.exit(1);
+    }
     HttpClient httpClient = HttpClient.newBuilder().build();
 
     DefaultDockerClientConfig.Builder config = DefaultDockerClientConfig.createDefaultConfigBuilder();
     DockerClient dockerClient = DockerClientBuilder.getInstance(config.build()).build();
 
-    DockerRegistryClient registryClient = new DockerRegistryClient(httpClient, new LibraryHelper());
+    DockerRegistryClient registryClient = new DockerRegistryClient(httpClient, new DockerLibraryHelper());
 
     ImageUpdateChecker imageUpdateChecker = new ImageUpdateChecker(dockerClient, registryClient);
-    ContainerUpdateChecker containerUpdateChecker = new ContainerUpdateChecker(dockerClient);
+    ContainerUpdateChecker containerUpdateChecker = new ContainerUpdateChecker(dockerClient, imageUpdateChecker);
 
-    DiscordNotifier notifier = new DiscordNotifier(
-      httpClient,
-      new URI(
-        "https://discord.com/api/webhooks/926553476048240702/ehlzIHLst7nPaceiLh0vHrKbW4SOSkJptNw3LFctsrSMKXTtEjqZr9Yro_7Y8rNo-qOn"
-      )
+    DiscordNotifier notifier = new DiscordNotifier(httpClient, new URI(args[0])
     );
 
-    List<ShipItContainerUpdate> updates = containerUpdateChecker.check(imageUpdateChecker.check());
-    for (ShipItContainerUpdate update : updates) {
-      System.out.println(update);
+    try {
+      List<ShipItContainerUpdate> updates = containerUpdateChecker.check();
+      notifier.notify(updates);
+    } catch (Exception e) {
+      LOGGER.error("Failed to check for updates", e);
+      notifier.notify(e);
     }
-    notifier.notify(updates);
   }
 }

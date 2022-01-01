@@ -1,4 +1,4 @@
-package de.ialistannen.shipit.library;
+package de.ialistannen.shipit.hub;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -6,11 +6,11 @@ import java.nio.file.Path;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 
-public class LibraryHelper {
+public class DockerLibraryHelper {
 
   private final Path libraryFolder;
 
-  public LibraryHelper() throws IOException {
+  public DockerLibraryHelper() throws IOException {
     libraryFolder = Files.createTempDirectory("shipit-official-libraries");
 
     cloneLibrary();

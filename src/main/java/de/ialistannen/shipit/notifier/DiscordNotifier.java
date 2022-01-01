@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.BooleanNode;
 import com.fasterxml.jackson.databind.node.IntNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import com.google.common.base.Throwables;
 import de.ialistannen.shipit.docker.ShipItContainerUpdate;
 import de.ialistannen.shipit.docker.ShipItImageUpdate;
 import de.ialistannen.shipit.hub.ImageInformation;
@@ -20,6 +21,9 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Triggers a discord webhook with notifications :^)
+ */
 public class DiscordNotifier implements Notifier {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DiscordNotifier.class);
@@ -35,15 +39,40 @@ public class DiscordNotifier implements Notifier {
   }
 
   @Override
+  public void notify(Exception e) {
+    LOGGER.info("Notifying for exception in discord");
+
+    String stacktrace = Throwables.getStackTraceAsString(e);
+
+    ObjectNode payload = objectMapper.createObjectNode();
+    payload.set("username", new TextNode("Ship it!"));
+
+    ObjectNode embed = objectMapper.createObjectNode();
+    embed.set("title", new TextNode("Error while checking for updates"));
+    embed.set("description", new TextNode("```\n" + stacktrace + "\n```"));
+    embed.set("color", new IntNode(0xFF6347));
+    embed.set("footer", buildFooter());
+
+    ArrayNode embeds = objectMapper.createArrayNode();
+    embeds.add(embed);
+    payload.set("embeds", embeds);
+
+    sendPayload(payload);
+  }
+
+  @Override
   public void notify(List<ShipItContainerUpdate> updates) {
     if (updates.isEmpty()) {
       return;
     }
     LOGGER.info("Notifying in discord");
 
-    try {
-      ObjectNode payload = buildPayload(updates);
+    ObjectNode payload = buildPayload(updates);
+    sendPayload(payload);
+  }
 
+  private void sendPayload(ObjectNode payload) {
+    try {
       HttpRequest request = HttpRequest.newBuilder(url)
         .POST(BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
         .header("Content-Type", "application/json")
@@ -78,13 +107,13 @@ public class DiscordNotifier implements Notifier {
 
     ObjectNode embed = objectMapper.createObjectNode();
     embed.set("title", new TextNode(remoteImageInfo.imageName() + ":" + remoteImageInfo.tag()));
-    embed.set("description", new TextNode(getUpdateText(imageUpdate)));
+    embed.set("description", new TextNode("Update found."));
     embed.set(
       "url",
       new TextNode("https://hub.docker.com/r/%s" .formatted(remoteImageInfo.imageName()))
     );
     embed.set("timestamp", new TextNode(remoteImageInfo.lastUpdated().toString()));
-    embed.set("color", new IntNode(imageUpdate.updateKind().getColor()));
+    embed.set("color", new IntNode(0xFF6347));
     embed.set("footer", buildFooter());
 
     ArrayNode fields = objectMapper.createArrayNode();
@@ -96,17 +125,6 @@ public class DiscordNotifier implements Notifier {
     embed.set("fields", fields);
 
     return embed;
-  }
-
-  private String getUpdateText(ShipItImageUpdate imageUpdate) {
-    String text = "Update found. ";
-
-    text += switch (imageUpdate.updateKind()) {
-      case CONTAINER_USES_OUTDATED_BASE_IMAGE -> "The base image the container uses is outdated";
-      case REFERENCE_IMAGE_IS_OUTDATED -> "The reference image is outdated, please pull it again";
-    };
-
-    return text;
   }
 
   private ObjectNode buildContainerNamesField(ShipItContainerUpdate update) {

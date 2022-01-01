@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import de.ialistannen.shipit.library.LibraryHelper;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -19,38 +18,55 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A client for <a href="hub.docker.com">hub.docker.com</a> and <a href="index.docker.io">index.docker.io</a> that can
+ * fetch the latest manifest digest and some basic information about an image.
+ */
 public class DockerRegistryClient {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DockerRegistryClient.class);
 
   private final HttpClient client;
   private final ObjectMapper objectMapper;
-  private final LibraryHelper libraryHelper;
+  private final DockerLibraryHelper dockerLibraryHelper;
+
   private Cache<String, String> cache;
   private Duration currentAssumedTokenLifetime;
 
-  public DockerRegistryClient(HttpClient client, LibraryHelper libraryHelper) {
+  public DockerRegistryClient(HttpClient client, DockerLibraryHelper dockerLibraryHelper) {
     this.client = client;
-    this.libraryHelper = libraryHelper;
+    this.dockerLibraryHelper = dockerLibraryHelper;
+
     this.objectMapper = new ObjectMapper().findAndRegisterModules();
     this.currentAssumedTokenLifetime = Duration.ofSeconds(300);
     this.cache = buildCache();
   }
 
   private Cache<String, String> buildCache() {
+    // We cache the tokens but release them before they become invalid
     LOGGER.info("Building token cache with assumed lifetime {}", currentAssumedTokenLifetime);
+
     return Caffeine.newBuilder()
       .expireAfterAccess(currentAssumedTokenLifetime.toSeconds() - 10, TimeUnit.SECONDS)
       .build();
   }
 
+  /**
+   * Fetches the latest information about a repo from docker hub.
+   *
+   * @param repoTag the combined image name and tag in the following format: {@code <image name>:<tag>}
+   * @return information about the image sourced from docker hub
+   * @throws IOException if an error occurs
+   * @throws URISyntaxException if you introduce invalid characters
+   * @throws InterruptedException ?
+   */
   public ImageInformation fetchImageInformationForTag(String repoTag)
     throws IOException, URISyntaxException, InterruptedException {
     String[] parts = repoTag.split(":");
     String image = parts[0];
     String tag = parts[1];
 
-    if (libraryHelper.isLibraryImage(image)) {
+    if (dockerLibraryHelper.isLibraryImage(image)) {
       image = "library/" + image;
     }
 
@@ -67,12 +83,26 @@ public class DockerRegistryClient {
     );
   }
 
+  /**
+   * Fetches the image digest for a given image and tag, using the passed token for authentication. The digest is taken
+   * from the received HEADER, as that does not seem to count against the API request limit.
+   * <p>
+   * The manifest digest is NOT the image ID, but can be found in the local image manifest as "{@code RepoDigests}".
+   *
+   * @param repoTag the combined image name and tag in the following format: {@code <image name>:<tag>}
+   * @return the digest of the manifest
+   * @throws IOException if an error happens
+   * @throws InterruptedException ?
+   * @throws URISyntaxException if you introduce invalid characters
+   * @throws DigestFetchException if the server denied the request
+   * @throws TokenFetchException if the auth token could not be fetched
+   */
   public String fetchImageDigestForTag(String repoTag) throws IOException, URISyntaxException, InterruptedException {
     String[] parts = repoTag.split(":");
     String image = parts[0];
     String tag = parts[1];
 
-    if (libraryHelper.isLibraryImage(image)) {
+    if (dockerLibraryHelper.isLibraryImage(image)) {
       image = "library/" + image;
     }
 
@@ -81,6 +111,21 @@ public class DockerRegistryClient {
     return fetchImageDigestForTag(image, tag, token);
   }
 
+  /**
+   * Fetches the image digest for a given image and tag, using the passed token for authentication. The digest is taken
+   * from the received HEADER, as that does not seem to count against the API request limit.
+   * <p>
+   * The manifest digest is NOT the image ID, but can be found in the local image manifest as "{@code RepoDigests}".
+   *
+   * @param image the image to get the digest for
+   * @param tag the tag to get the digest for
+   * @param token the token to use
+   * @return the digest of the manifest
+   * @throws IOException if an error happens
+   * @throws InterruptedException ?
+   * @throws URISyntaxException if you introduce invalid characters
+   * @throws DigestFetchException if the server denied the request
+   */
   private String fetchImageDigestForTag(String image, String tag, String token)
     throws IOException, InterruptedException, URISyntaxException {
     LOGGER.debug("Fetching digest for '{}':'{}'", image, tag);
@@ -109,6 +154,14 @@ public class DockerRegistryClient {
     return response.headers().firstValue("docker-content-digest").orElseThrow();
   }
 
+  /**
+   * Fetches the token an converts any error into a {@link TokenFetchException}.
+   *
+   * @param image the the image to request a token for
+   * @return the received token
+   * @throws TokenFetchException if anything goes wrong
+   * @see #fetchToken(String)
+   */
   private String fetchTokenSilent(String image) {
     try {
       return fetchToken(image);
@@ -117,6 +170,16 @@ public class DockerRegistryClient {
     }
   }
 
+  /**
+   * Due to rate limiting you need to request a token from the docker registry if you want to view its manifests. This
+   * can be done without logging in, but must be done once per image.
+   *
+   * @param image the image to request a token for
+   * @return the received token
+   * @throws IOException if an error happens
+   * @throws InterruptedException help?
+   * @throws URISyntaxException if the image turns the URL into an invalid URI...
+   */
   private String fetchToken(String image)
     throws IOException, InterruptedException, URISyntaxException {
     LOGGER.debug("Fetching token for {}", image);
