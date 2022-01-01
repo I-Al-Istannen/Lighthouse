@@ -55,7 +55,6 @@ public class DiscordNotifier implements Notifier {
     String stacktrace = Throwables.getStackTraceAsString(e);
 
     ObjectNode payload = objectMapper.createObjectNode();
-    payload.set("username", new TextNode("Ship it!"));
 
     ObjectNode embed = objectMapper.createObjectNode();
     embed.set("title", new TextNode("Error while checking for updates"));
@@ -91,6 +90,7 @@ public class DiscordNotifier implements Notifier {
         "content",
         new TextNode("Hey, <@" + id + "> " + mentionText.orElse("I got some news!"))
       ));
+      payload.set("username", new TextNode("Lighthouse"));
 
       HttpRequest request = HttpRequest.newBuilder(url)
         .POST(BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
@@ -108,7 +108,6 @@ public class DiscordNotifier implements Notifier {
 
   private ObjectNode buildPayload(List<LighthouseContainerUpdate> updates) {
     ObjectNode payload = objectMapper.createObjectNode();
-    payload.set("username", new TextNode("Ship it!"));
     ArrayNode embeds = objectMapper.createArrayNode();
 
     updates.stream()
