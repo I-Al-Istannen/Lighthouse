@@ -2,6 +2,7 @@ package de.ialistannen.lighthouse.registry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import de.ialistannen.lighthouse.config.DockerRegistryAuth;
 import de.ialistannen.lighthouse.hub.DigestFetchException;
 import de.ialistannen.lighthouse.hub.DockerLibraryHelper;
 import de.ialistannen.lighthouse.hub.TokenFetchException;
@@ -13,7 +14,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -29,10 +33,17 @@ public class DockerRegistry {
   private final DockerLibraryHelper libraryHelper;
   private final HttpClient client;
   private final ObjectMapper objectMapper;
+  private final List<DockerRegistryAuth> registryAuths;
 
-  public DockerRegistry(DockerLibraryHelper libraryHelper, HttpClient client) {
+  public DockerRegistry(
+    DockerLibraryHelper libraryHelper,
+    HttpClient client,
+    List<DockerRegistryAuth> registryAuths
+  ) {
     this.libraryHelper = libraryHelper;
     this.client = client;
+    this.registryAuths = registryAuths;
+
     this.objectMapper = new ObjectMapper();
   }
 
@@ -47,10 +58,57 @@ public class DockerRegistry {
    * @throws TokenFetchException if fetching failed
    */
   public String getAuthHeader(String image) throws URISyntaxException, IOException, InterruptedException {
-    URI authUrl = getAuthUrl(image);
+    String registryUrl = getRegistryUrl(image);
+
+    List<String> headers = new ArrayList<>(List.of("User-Agent", "Lighthouse"));
+    getAuthForRegistry(registryUrl).ifPresent(auth -> {
+      headers.add("Authorization");
+      headers.add("Basic " + auth);
+    });
+    HttpRequest challengeRequest = HttpRequest.newBuilder(getChallengeUrl(image))
+      .headers(headers.toArray(String[]::new))
+      .GET()
+      .build();
+
+    HttpResponse<Void> challengeResponse = client.send(challengeRequest, BodyHandlers.discarding());
+
+    // basic auth succeeded
+    if (challengeResponse.statusCode() == 200 || challengeResponse.statusCode() == 204) {
+      return "Basic " + getAuthForRegistry(registryUrl)
+        .orElseThrow(() -> new TokenFetchException("Thought I had auth but I don't?"));
+    }
+
+    String header = challengeResponse.headers()
+      .firstValue("www-authenticate")
+      .orElseThrow(() -> new TokenFetchException("Could not find www-authenticate header"));
+
+    LOGGER.debug("Received header: '{}'", header);
+
+    if (header.toLowerCase(Locale.ROOT).contains("basic")) {
+      return "Basic " + getAuthForRegistry(registryUrl)
+        .orElseThrow(() -> new TokenFetchException("Did not have credentials for '" + registryUrl + "'"));
+    }
+    if (!header.toLowerCase(Locale.ROOT).contains("bearer")) {
+      throw new TokenFetchException("Unknown challenge type: '" + header + "'");
+    }
+
+    String realm = getFromAuthenticateHeader(header, REALM_PATTERN);
+    String service = getFromAuthenticateHeader(header, SERVICE_PATTERN);
+    String scope = "repository:" + libraryHelper.getScopeForImage(image) + ":pull";
+
+    URI authUrl = new URI(realm + "?service=" + service + "&scope=" + scope);
     LOGGER.debug("Build auth URL '{}' for '{}'", authUrl, image);
 
     return getBearerHeader(authUrl);
+  }
+
+  private Optional<String> getAuthForRegistry(String registryUrl) throws URISyntaxException {
+    String host = new URI(registryUrl).getHost();
+
+    return registryAuths.stream()
+      .filter(it -> it.host().equals(host))
+      .findFirst()
+      .map(DockerRegistryAuth::encodedAuth);
   }
 
   /**
@@ -108,33 +166,6 @@ public class DockerRegistry {
     return "Bearer " + token;
   }
 
-  private URI getAuthUrl(String image)
-    throws URISyntaxException, IOException, InterruptedException {
-    HttpRequest challengeRequest = HttpRequest.newBuilder(getChallengeUrl(image))
-      .header("User-Agent", "Lighthouse")
-      .GET()
-      // TODO: Include basic auth if present
-      .build();
-
-    HttpResponse<Void> challengeResponse = client.send(challengeRequest, BodyHandlers.discarding());
-    String header = challengeResponse.headers()
-      .firstValue("www-authenticate")
-      .orElseThrow(() -> new TokenFetchException("Could not find www-authenticate header"));
-
-    LOGGER.debug("Received header: '{}'", header);
-
-    if (!header.toLowerCase(Locale.ROOT).contains("bearer")) {
-      // TODO: Basic
-      throw new TokenFetchException("Unknown challenge type: '" + header + "'");
-    }
-
-    String realm = getFromAuthenticateHeader(header, REALM_PATTERN);
-    String service = getFromAuthenticateHeader(header, SERVICE_PATTERN);
-    String scope = "repository:" + libraryHelper.getScopeForImage(image) + ":pull";
-
-    return new URI(realm + "?service=" + service + "&scope=" + scope);
-  }
-
   private String getFromAuthenticateHeader(String input, Pattern regex) {
     Matcher matcher = regex.matcher(input);
     if (!matcher.find()) {
@@ -155,8 +186,6 @@ public class DockerRegistry {
     if (nameUri.getPort() > 0) {
       url += ":" + nameUri.getPort();
     }
-
-    LOGGER.debug("Build registry URL '{}' for '{}'", url, image);
 
     return url;
   }

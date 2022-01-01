@@ -17,6 +17,9 @@ public interface CliArguments {
   @Option(names = "--mention-text", description = "Text to send in Discord")
   Optional<String> mentionText();
 
+  @Option(names = "--docker-config", description = "Path to docker config")
+  Optional<String> dockerConfigPath();
+
   @Parameter(index = 0, description = "Discord webhook URL", paramLabel = "URL")
   String webhookUrl();
 

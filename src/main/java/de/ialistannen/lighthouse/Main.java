@@ -5,6 +5,8 @@ import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import de.ialistannen.lighthouse.cli.CliArguments;
 import de.ialistannen.lighthouse.cli.CliArgumentsParser;
+import de.ialistannen.lighthouse.config.DockerConfig;
+import de.ialistannen.lighthouse.config.DockerRegistryAuth;
 import de.ialistannen.lighthouse.docker.ContainerUpdateChecker;
 import de.ialistannen.lighthouse.docker.ImageUpdateChecker;
 import de.ialistannen.lighthouse.docker.LighthouseContainerUpdate;
@@ -16,7 +18,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -36,7 +41,7 @@ public class Main {
     DockerClient dockerClient = DockerClientBuilder.getInstance(config.build()).build();
 
     DockerLibraryHelper libraryHelper = new DockerLibraryHelper(httpClient);
-    DockerRegistry dockerRegistry = new DockerRegistry(libraryHelper, httpClient);
+    DockerRegistry dockerRegistry = new DockerRegistry(libraryHelper, httpClient, authsFromArgs(arguments));
     DockerHubMetadataFetcher metadataFetcher = new DockerHubMetadataFetcher(libraryHelper, httpClient);
 
     ImageUpdateChecker imageUpdateChecker = new ImageUpdateChecker(dockerClient, dockerRegistry, metadataFetcher);
@@ -74,5 +79,21 @@ public class Main {
         }
       }
     }
+  }
+
+  private static List<DockerRegistryAuth> authsFromArgs(CliArguments arguments) throws IOException {
+    Path pathToFile = Path.of(System.getProperty("user.home"), ".docker/config.json");
+
+    if (arguments.dockerConfigPath().isEmpty()) {
+      if (!Files.exists(pathToFile)) {
+        return Collections.emptyList();
+      }
+      LOGGER.info("Using default docker.json path");
+    } else {
+      pathToFile = Path.of(arguments.dockerConfigPath().get());
+    }
+
+    LOGGER.info("Loading auth from '{}'", pathToFile);
+    return DockerConfig.loadAuthentications(pathToFile);
   }
 }
