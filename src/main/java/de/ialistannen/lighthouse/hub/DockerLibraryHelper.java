@@ -31,6 +31,7 @@ public class DockerLibraryHelper {
 
     return StreamSupport.stream(new ObjectMapper().readValue(jsonBody, ArrayNode.class).spliterator(), false)
       .map(it -> it.get("path").asText())
+      .map(it -> it.replaceFirst("library/", ""))
       .collect(Collectors.toSet());
   }
 
