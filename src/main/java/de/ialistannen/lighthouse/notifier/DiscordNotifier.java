@@ -1,4 +1,4 @@
-package de.ialistannen.shipit.notifier;
+package de.ialistannen.lighthouse.notifier;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -7,9 +7,9 @@ import com.fasterxml.jackson.databind.node.IntNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.Throwables;
-import de.ialistannen.shipit.docker.ShipItContainerUpdate;
-import de.ialistannen.shipit.docker.ShipItImageUpdate;
-import de.ialistannen.shipit.hub.ImageInformation;
+import de.ialistannen.lighthouse.docker.LighthouseContainerUpdate;
+import de.ialistannen.lighthouse.docker.LighthouseImageUpdate;
+import de.ialistannen.lighthouse.hub.ImageInformation;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -61,7 +61,7 @@ public class DiscordNotifier implements Notifier {
   }
 
   @Override
-  public void notify(List<ShipItContainerUpdate> updates) {
+  public void notify(List<LighthouseContainerUpdate> updates) {
     if (updates.isEmpty()) {
       return;
     }
@@ -87,7 +87,7 @@ public class DiscordNotifier implements Notifier {
     }
   }
 
-  private ObjectNode buildPayload(List<ShipItContainerUpdate> updates) {
+  private ObjectNode buildPayload(List<LighthouseContainerUpdate> updates) {
     ObjectNode payload = objectMapper.createObjectNode();
     payload.set("username", new TextNode("Ship it!"));
     ArrayNode embeds = objectMapper.createArrayNode();
@@ -101,8 +101,8 @@ public class DiscordNotifier implements Notifier {
     return payload;
   }
 
-  private ObjectNode buildEmbed(ShipItContainerUpdate update) {
-    ShipItImageUpdate imageUpdate = update.imageUpdate();
+  private ObjectNode buildEmbed(LighthouseContainerUpdate update) {
+    LighthouseImageUpdate imageUpdate = update.imageUpdate();
     ImageInformation remoteImageInfo = imageUpdate.remoteImageInfo();
 
     ObjectNode embed = objectMapper.createObjectNode();
@@ -127,7 +127,7 @@ public class DiscordNotifier implements Notifier {
     return embed;
   }
 
-  private ObjectNode buildContainerNamesField(ShipItContainerUpdate update) {
+  private ObjectNode buildContainerNamesField(LighthouseContainerUpdate update) {
     ObjectNode containerNames = objectMapper.createObjectNode();
     containerNames.set("name", new TextNode("Container names"));
     containerNames.set("value", new TextNode(String.join(", ", update.names())));
@@ -135,7 +135,7 @@ public class DiscordNotifier implements Notifier {
     return containerNames;
   }
 
-  private ObjectNode buildImageNamesField(ShipItImageUpdate update) {
+  private ObjectNode buildImageNamesField(LighthouseImageUpdate update) {
     ObjectNode imageNames = objectMapper.createObjectNode();
     imageNames.set("name", new TextNode("Affected image names"));
     imageNames.set("value", new TextNode(String.join(", ", update.sourceImageNames())));
@@ -159,7 +159,7 @@ public class DiscordNotifier implements Notifier {
     return updaterInfo;
   }
 
-  private ObjectNode buildRemoteImageIdField(ShipItImageUpdate imageUpdate) {
+  private ObjectNode buildRemoteImageIdField(LighthouseImageUpdate imageUpdate) {
     ObjectNode remoteImageId = objectMapper.createObjectNode();
     remoteImageId.set("name", new TextNode("New digest"));
     remoteImageId.set("value", new TextNode("`" + imageUpdate.remoteImageId() + "`"));

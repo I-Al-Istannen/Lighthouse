@@ -1,14 +1,14 @@
-package de.ialistannen.shipit.docker;
+package de.ialistannen.lighthouse.docker;
 
-import static de.ialistannen.shipit.docker.ContainerUtils.getBaseRepoTag;
-import static de.ialistannen.shipit.docker.ContainerUtils.getImage;
-import static de.ialistannen.shipit.docker.ContainerUtils.getTag;
+import static de.ialistannen.lighthouse.docker.ContainerUtils.getBaseRepoTag;
+import static de.ialistannen.lighthouse.docker.ContainerUtils.getImage;
+import static de.ialistannen.lighthouse.docker.ContainerUtils.getTag;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectImageResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.Container;
-import de.ialistannen.shipit.hub.DockerRegistryClient;
+import de.ialistannen.lighthouse.hub.DockerRegistryClient;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -51,11 +51,11 @@ public class ImageUpdateChecker {
    * @throws IOException if an error happens looking up remote information
    * @throws URISyntaxException if the base image contains invalid characters
    * @throws InterruptedException ?
-   * @throws de.ialistannen.shipit.hub.DigestFetchException if the remote denied serving the digest
-   * @throws de.ialistannen.shipit.hub.TokenFetchException if the auth token could not be retrieved
+   * @throws de.ialistannen.lighthouse.hub.DigestFetchException if the remote denied serving the digest
+   * @throws de.ialistannen.lighthouse.hub.TokenFetchException if the auth token could not be retrieved
    */
-  public List<ShipItImageUpdate> check() throws IOException, URISyntaxException, InterruptedException {
-    List<ShipItImageUpdate> updates = new ArrayList<>();
+  public List<LighthouseImageUpdate> check() throws IOException, URISyntaxException, InterruptedException {
+    List<LighthouseImageUpdate> updates = new ArrayList<>();
 
     Collection<Container> participatingContainers = getParticipatingContainers();
     pullUnknownBaseImages(participatingContainers);
@@ -74,7 +74,7 @@ public class ImageUpdateChecker {
       );
 
       updates.add(
-        new ShipItImageUpdate(
+        new LighthouseImageUpdate(
           info.container().getImageId(),
           info.containerImage().getRepoTags(),
           info.currentRemoteDigest(),

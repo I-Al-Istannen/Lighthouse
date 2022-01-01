@@ -1,4 +1,4 @@
-package de.ialistannen.shipit.hub;
+package de.ialistannen.lighthouse.hub;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,7 +11,7 @@ public class DockerLibraryHelper {
   private final Path libraryFolder;
 
   public DockerLibraryHelper() throws IOException {
-    libraryFolder = Files.createTempDirectory("shipit-official-libraries");
+    libraryFolder = Files.createTempDirectory("lighthouse-official-libraries");
 
     cloneLibrary();
   }

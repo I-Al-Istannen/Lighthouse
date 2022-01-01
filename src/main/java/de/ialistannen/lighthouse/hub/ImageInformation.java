@@ -1,4 +1,4 @@
-package de.ialistannen.shipit.hub;
+package de.ialistannen.lighthouse.hub;
 
 import java.time.Instant;
 

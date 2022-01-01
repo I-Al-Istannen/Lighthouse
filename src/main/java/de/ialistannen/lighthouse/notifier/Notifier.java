@@ -1,11 +1,11 @@
-package de.ialistannen.shipit.notifier;
+package de.ialistannen.lighthouse.notifier;
 
-import de.ialistannen.shipit.docker.ShipItContainerUpdate;
+import de.ialistannen.lighthouse.docker.LighthouseContainerUpdate;
 import java.util.List;
 
 public interface Notifier {
 
-  void notify(List<ShipItContainerUpdate> updates);
+  void notify(List<LighthouseContainerUpdate> updates);
 
   /**
    * Notifies the user that execution failed.

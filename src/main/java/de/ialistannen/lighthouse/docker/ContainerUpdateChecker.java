@@ -1,4 +1,4 @@
-package de.ialistannen.shipit.docker;
+package de.ialistannen.lighthouse.docker;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.model.Container;
@@ -34,29 +34,31 @@ public class ContainerUpdateChecker {
    * @throws IOException if an error happens looking up remote information
    * @throws URISyntaxException if the base image contains invalid characters
    * @throws InterruptedException ?
-   * @throws de.ialistannen.shipit.hub.DigestFetchException if the remote denied serving the digest
-   * @throws de.ialistannen.shipit.hub.TokenFetchException if the auth token could not be retrieved
+   * @throws de.ialistannen.lighthouse.hub.DigestFetchException if the remote denied serving the digest
+   * @throws de.ialistannen.lighthouse.hub.TokenFetchException if the auth token could not be retrieved
    * @see ImageUpdateChecker#check()
    */
-  public List<ShipItContainerUpdate> check() throws IOException, URISyntaxException, InterruptedException {
-    List<ShipItImageUpdate> imageUpdates = imageUpdateChecker.check();
-    List<ShipItContainerUpdate> updates = new ArrayList<>();
+  public List<LighthouseContainerUpdate> check() throws IOException, URISyntaxException, InterruptedException {
+    List<LighthouseImageUpdate> imageUpdates = imageUpdateChecker.check();
+    List<LighthouseContainerUpdate> updates = new ArrayList<>();
 
-    Map<String, ShipItImageUpdate> imageMap = imageUpdates.stream().collect(Collectors.toMap(
-      ShipItImageUpdate::sourceImageId,
+    Map<String, LighthouseImageUpdate> imageMap = imageUpdates.stream().collect(Collectors.toMap(
+      LighthouseImageUpdate::sourceImageId,
       it -> it
     ));
 
     for (Container container : client.listContainersCmd().exec()) {
       if (!imageMap.containsKey(container.getImageId())) {
-        LOGGER.info("Container '{}' is up to date", getContainerNames(container));
+        if (ContainerUtils.isParticipating(container)) {
+          LOGGER.info("Container '{}' is up to date", getContainerNames(container));
+        }
         continue;
       }
-      ShipItImageUpdate update = imageMap.get(container.getImageId());
+      LighthouseImageUpdate update = imageMap.get(container.getImageId());
       LOGGER.info("Container '{}' has an update ({})", getContainerNames(container), update.remoteImageId());
 
       updates.add(
-        new ShipItContainerUpdate(
+        new LighthouseContainerUpdate(
           getContainerNames(container),
           update
         )

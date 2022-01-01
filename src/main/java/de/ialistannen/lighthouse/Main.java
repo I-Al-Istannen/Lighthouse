@@ -1,14 +1,14 @@
-package de.ialistannen.shipit;
+package de.ialistannen.lighthouse;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
-import de.ialistannen.shipit.docker.ContainerUpdateChecker;
-import de.ialistannen.shipit.docker.ImageUpdateChecker;
-import de.ialistannen.shipit.docker.ShipItContainerUpdate;
-import de.ialistannen.shipit.hub.DockerLibraryHelper;
-import de.ialistannen.shipit.hub.DockerRegistryClient;
-import de.ialistannen.shipit.notifier.DiscordNotifier;
+import de.ialistannen.lighthouse.docker.ContainerUpdateChecker;
+import de.ialistannen.lighthouse.docker.ImageUpdateChecker;
+import de.ialistannen.lighthouse.docker.LighthouseContainerUpdate;
+import de.ialistannen.lighthouse.hub.DockerLibraryHelper;
+import de.ialistannen.lighthouse.hub.DockerRegistryClient;
+import de.ialistannen.lighthouse.notifier.DiscordNotifier;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -49,7 +49,7 @@ public class Main {
     while (true) {
       try {
         LOGGER.info("Checking for updates...");
-        List<ShipItContainerUpdate> updates = containerUpdateChecker.check();
+        List<LighthouseContainerUpdate> updates = containerUpdateChecker.check();
         notifier.notify(updates);
       } catch (Exception e) {
         LOGGER.error("Failed to check for updates", e);
