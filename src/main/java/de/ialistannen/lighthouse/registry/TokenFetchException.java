@@ -6,7 +6,4 @@ public class TokenFetchException extends RuntimeException {
     super(message);
   }
 
-  public TokenFetchException(String message, Throwable cause) {
-    super(message, cause);
-  }
 }

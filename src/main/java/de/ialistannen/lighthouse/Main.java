@@ -3,18 +3,17 @@ package de.ialistannen.lighthouse;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
+import de.ialistannen.lighthouse.auth.DockerRegistryAuth;
 import de.ialistannen.lighthouse.cli.CliArguments;
 import de.ialistannen.lighthouse.cli.CliArgumentsParser;
-import de.ialistannen.lighthouse.dockerconfig.DockerConfig;
-import de.ialistannen.lighthouse.dockerconfig.DockerRegistryAuth;
+import de.ialistannen.lighthouse.metadata.DockerHubMetadataFetcher;
+import de.ialistannen.lighthouse.model.EnrollmentMode;
+import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
+import de.ialistannen.lighthouse.notifier.DiscordNotifier;
+import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
+import de.ialistannen.lighthouse.registry.DockerRegistry;
 import de.ialistannen.lighthouse.updates.ContainerUpdateChecker;
 import de.ialistannen.lighthouse.updates.ImageUpdateChecker;
-import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
-import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
-import de.ialistannen.lighthouse.notifier.DiscordNotifier;
-import de.ialistannen.lighthouse.registry.DockerHubMetadataFetcher;
-import de.ialistannen.lighthouse.registry.DockerRegistry;
-import de.ialistannen.lighthouse.model.EnrollmentMode;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -53,7 +52,11 @@ public class Main {
       enrollmentMode,
       libraryHelper
     );
-    ContainerUpdateChecker containerUpdateChecker = new ContainerUpdateChecker(dockerClient, imageUpdateChecker);
+    ContainerUpdateChecker containerUpdateChecker = new ContainerUpdateChecker(
+      dockerClient,
+      imageUpdateChecker,
+      enrollmentMode
+    );
 
     DiscordNotifier notifier = new DiscordNotifier(
       httpClient,
@@ -102,6 +105,6 @@ public class Main {
     }
 
     LOGGER.info("Loading auth from '{}'", pathToFile);
-    return DockerConfig.loadAuthentications(pathToFile);
+    return DockerRegistryAuth.loadAuthentications(pathToFile);
   }
 }

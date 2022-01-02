@@ -2,7 +2,7 @@ package de.ialistannen.lighthouse.registry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import de.ialistannen.lighthouse.dockerconfig.DockerRegistryAuth;
+import de.ialistannen.lighthouse.auth.DockerRegistryAuth;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -20,6 +20,9 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Implements docker registry authentication and digest fetching using the v2 API.
+ */
 public class DockerRegistry {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DockerRegistry.class);
@@ -54,9 +57,10 @@ public class DockerRegistry {
    * @throws InterruptedException ?
    * @throws TokenFetchException if fetching failed
    */
-  public String getAuthHeader(String image) throws URISyntaxException, IOException, InterruptedException {
+  private String getAuthHeader(String image) throws URISyntaxException, IOException, InterruptedException {
     String registryUrl = getRegistryUrl(image);
 
+    // TODO: Do we need to send this at all here? Or just return the stored auth and be done with it?
     List<String> headers = new ArrayList<>(List.of("User-Agent", "Lighthouse"));
     getAuthForRegistry(registryUrl).ifPresent(auth -> {
       headers.add("Authorization");
@@ -130,6 +134,8 @@ public class DockerRegistry {
     String url = getRegistryUrl(image) + "/v2/%s/manifests/%s".formatted(imageName, tag);
 
     HttpRequest request = HttpRequest.newBuilder(new URI(url))
+      // Shotgun-approach: Get whatever the newest is they support as that hopefully matches the local one.
+      // We compare manifest digests, so this must be the same the client uses.
       .header("Accept", "application/vnd.docker.distribution.manifest.list.v2+json")
       .header("Accept", "application/vnd.docker.distribution.manifest.v1+json")
       .header("Accept", "application/vnd.docker.distribution.manifest.v2+json")

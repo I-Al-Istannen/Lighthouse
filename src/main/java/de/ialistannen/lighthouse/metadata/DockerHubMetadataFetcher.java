@@ -1,7 +1,9 @@
-package de.ialistannen.lighthouse.registry;
+package de.ialistannen.lighthouse.metadata;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
+import de.ialistannen.lighthouse.registry.RemoteImageMetadata;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;

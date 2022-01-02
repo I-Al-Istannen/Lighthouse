@@ -12,7 +12,7 @@ import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
 import de.ialistannen.lighthouse.registry.DigestFetchException;
 import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
 import de.ialistannen.lighthouse.registry.DockerRegistry;
-import de.ialistannen.lighthouse.registry.MetadataFetcher;
+import de.ialistannen.lighthouse.metadata.MetadataFetcher;
 import de.ialistannen.lighthouse.registry.TokenFetchException;
 import de.ialistannen.lighthouse.model.EnrollmentMode;
 import java.io.IOException;

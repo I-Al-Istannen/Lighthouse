@@ -2,6 +2,7 @@ package de.ialistannen.lighthouse.updates;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.model.Container;
+import de.ialistannen.lighthouse.model.EnrollmentMode;
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
 import de.ialistannen.lighthouse.registry.DigestFetchException;
@@ -25,10 +26,16 @@ public class ContainerUpdateChecker {
 
   private final DockerClient client;
   private final ImageUpdateChecker imageUpdateChecker;
+  private final EnrollmentMode enrollmentMode;
 
-  public ContainerUpdateChecker(DockerClient client, ImageUpdateChecker imageUpdateChecker) {
+  public ContainerUpdateChecker(
+    DockerClient client,
+    ImageUpdateChecker imageUpdateChecker,
+    EnrollmentMode enrollmentMode
+  ) {
     this.client = client;
     this.imageUpdateChecker = imageUpdateChecker;
+    this.enrollmentMode = enrollmentMode;
   }
 
   /**
@@ -53,7 +60,7 @@ public class ContainerUpdateChecker {
 
     for (Container container : client.listContainersCmd().exec()) {
       if (!imageMap.containsKey(container.getImageId())) {
-        if (ContainerWithBaseUtils.isTaggedWithBase(container)) {
+        if (enrollmentMode.isParticipating(container)) {
           LOGGER.info("Container '{}' is up to date", getContainerNames(container));
         }
         continue;

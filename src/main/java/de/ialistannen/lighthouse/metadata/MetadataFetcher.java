@@ -1,5 +1,6 @@
-package de.ialistannen.lighthouse.registry;
+package de.ialistannen.lighthouse.metadata;
 
+import de.ialistannen.lighthouse.registry.RemoteImageMetadata;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Optional;

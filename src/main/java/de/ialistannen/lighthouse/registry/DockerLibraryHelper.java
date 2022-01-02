@@ -12,6 +12,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+/**
+ * A helper for Docker's "official libraries" program. The APIs assume you magically know what images are official so
+ * you can add the necessary "library/" prefix. This helper asks GitHub what the current state of the repo is to know
+ * that without a crystal ball.
+ */
 public class DockerLibraryHelper {
 
   private final Set<String> libraryImages;
