@@ -14,6 +14,7 @@ import de.ialistannen.lighthouse.hub.DockerLibraryHelper;
 import de.ialistannen.lighthouse.notifier.DiscordNotifier;
 import de.ialistannen.lighthouse.registry.DockerHubMetadataFetcher;
 import de.ialistannen.lighthouse.registry.DockerRegistry;
+import de.ialistannen.lighthouse.util.EnrollmentMode;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -34,6 +35,7 @@ public class Main {
   public static void main(String[] args) throws IOException, URISyntaxException, InterruptedException {
     CliArguments arguments = new CliArgumentsParser().parseOrExit(args);
     int checkFrequencySeconds = arguments.checkIntervalSeconds().orElse((int) TimeUnit.HOURS.toSeconds(12));
+    EnrollmentMode enrollmentMode = arguments.optOut() ? EnrollmentMode.OPT_OUT : EnrollmentMode.OPT_IN;
 
     HttpClient httpClient = HttpClient.newBuilder().build();
 
@@ -44,7 +46,13 @@ public class Main {
     DockerRegistry dockerRegistry = new DockerRegistry(libraryHelper, httpClient, authsFromArgs(arguments));
     DockerHubMetadataFetcher metadataFetcher = new DockerHubMetadataFetcher(libraryHelper, httpClient);
 
-    ImageUpdateChecker imageUpdateChecker = new ImageUpdateChecker(dockerClient, dockerRegistry, metadataFetcher);
+    ImageUpdateChecker imageUpdateChecker = new ImageUpdateChecker(
+      dockerClient,
+      dockerRegistry,
+      metadataFetcher,
+      enrollmentMode,
+      libraryHelper
+    );
     ContainerUpdateChecker containerUpdateChecker = new ContainerUpdateChecker(dockerClient, imageUpdateChecker);
 
     DiscordNotifier notifier = new DiscordNotifier(

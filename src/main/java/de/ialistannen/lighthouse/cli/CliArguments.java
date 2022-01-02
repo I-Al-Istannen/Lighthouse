@@ -20,6 +20,9 @@ public interface CliArguments {
   @Option(names = "--docker-config", description = "Path to docker config")
   Optional<String> dockerConfigPath();
 
+  @Option(names = "--require-label", description = "Ignore containers without 'lighthouse.enable' label")
+  boolean optOut();
+
   @Parameter(index = 0, description = "Discord webhook URL", paramLabel = "URL")
   String webhookUrl();
 

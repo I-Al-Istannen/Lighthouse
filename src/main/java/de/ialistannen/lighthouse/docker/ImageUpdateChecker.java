@@ -1,15 +1,17 @@
 package de.ialistannen.lighthouse.docker;
 
-import static de.ialistannen.lighthouse.docker.ContainerUtils.getBaseRepoTag;
-import static de.ialistannen.lighthouse.docker.ContainerUtils.getImage;
-import static de.ialistannen.lighthouse.docker.ContainerUtils.getTag;
+import static de.ialistannen.lighthouse.docker.ContainerWithBaseUtils.getBaseImage;
+import static de.ialistannen.lighthouse.docker.ContainerWithBaseUtils.getBaseRepoTag;
+import static de.ialistannen.lighthouse.docker.ContainerWithBaseUtils.getBaseTag;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectImageResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.Container;
+import de.ialistannen.lighthouse.hub.DockerLibraryHelper;
 import de.ialistannen.lighthouse.registry.DockerRegistry;
 import de.ialistannen.lighthouse.registry.MetadataFetcher;
+import de.ialistannen.lighthouse.util.EnrollmentMode;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -20,6 +22,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,11 +37,21 @@ public class ImageUpdateChecker {
   private final DockerClient client;
   private final DockerRegistry dockerRegistry;
   private final MetadataFetcher metadataFetcher;
+  private final EnrollmentMode enrollmentMode;
+  private final DockerLibraryHelper libraryHelper;
 
-  public ImageUpdateChecker(DockerClient client, DockerRegistry dockerRegistry, MetadataFetcher metadataFetcher) {
+  public ImageUpdateChecker(
+    DockerClient client,
+    DockerRegistry dockerRegistry,
+    MetadataFetcher metadataFetcher,
+    EnrollmentMode enrollmentMode,
+    DockerLibraryHelper libraryHelper
+  ) {
     this.client = client;
     this.dockerRegistry = dockerRegistry;
     this.metadataFetcher = metadataFetcher;
+    this.enrollmentMode = enrollmentMode;
+    this.libraryHelper = libraryHelper;
   }
 
   /**
@@ -58,9 +71,30 @@ public class ImageUpdateChecker {
    * @throws de.ialistannen.lighthouse.hub.TokenFetchException if the auth token could not be retrieved
    */
   public List<LighthouseImageUpdate> check() throws IOException, URISyntaxException, InterruptedException {
+    List<LighthouseImageUpdate> updates = new ArrayList<>(checkBaseTaggedContainers());
+    updates.addAll(checkBasicContainers());
+    return updates;
+  }
+
+  private List<LighthouseImageUpdate> checkBasicContainers()
+    throws IOException, URISyntaxException, InterruptedException {
     List<LighthouseImageUpdate> updates = new ArrayList<>();
 
-    Collection<Container> participatingContainers = getParticipatingContainers();
+    for (ContainerWithRemoteInfo info : getContainersWithRemoteInfo(getParticipatingBasicContainers())) {
+      if (info.baseImageOutdated()) {
+        updates.add(info.toUpdate(metadataFetcher));
+      }
+    }
+
+    return updates;
+  }
+
+  private List<LighthouseImageUpdate> checkBaseTaggedContainers()
+    throws InterruptedException, IOException, URISyntaxException {
+
+    List<LighthouseImageUpdate> updates = new ArrayList<>();
+
+    Collection<ContainerWithBase> participatingContainers = getParticipatingBaseTaggedContainers();
     pullUnknownBaseImages(participatingContainers);
 
     for (ContainerWithRemoteInfo info : getContainersWithRemoteInfo(participatingContainers)) {
@@ -72,20 +106,11 @@ public class ImageUpdateChecker {
 
       LOGGER.info(
         "Container '{}' is out of date for image '{}'",
-        info.container().getNames(),
-        getBaseRepoTag(info.container())
+        info.container().container().getNames(),
+        info.container().baseRepoTag()
       );
 
-      updates.add(
-        new LighthouseImageUpdate(
-          info.container().getImageId(),
-          info.containerImage().getRepoTags(),
-          info.currentRemoteDigest(),
-          getImage(info.container()),
-          getTag(info.container()),
-          metadataFetcher.fetch(getImage(info.container()), getTag(info.container()))
-        )
-      );
+      updates.add(info.toUpdate(metadataFetcher));
     }
 
     return updates;
@@ -105,33 +130,36 @@ public class ImageUpdateChecker {
     return true;
   }
 
-  private Collection<ContainerWithRemoteInfo> getContainersWithRemoteInfo(Collection<Container> participatingContainers)
-    throws IOException, URISyntaxException, InterruptedException {
+  private Collection<ContainerWithRemoteInfo> getContainersWithRemoteInfo(
+    Collection<ContainerWithBase> participatingContainers
+  ) throws IOException, URISyntaxException, InterruptedException {
 
     Collection<ContainerWithRemoteInfo> foo = new HashSet<>();
-    for (Container participatingContainer : participatingContainers) {
-      if (participatingContainer.getImageId() == null) {
-        LOGGER.warn("Container '{}' has no image id", (Object) participatingContainer.getNames());
+    for (ContainerWithBase withBase : participatingContainers) {
+      Container container = withBase.container();
+      if (container.getImageId() == null) {
+        LOGGER.warn("Container '{}' has no image id", (Object) container.getNames());
         continue;
       }
-      InspectImageResponse inspect = client.inspectImageCmd(getBaseRepoTag(participatingContainer)).exec();
+      InspectImageResponse inspect = client.inspectImageCmd(withBase.baseImage()).exec();
       if (inspect.getRepoDigests() == null || inspect.getRepoDigests().isEmpty()) {
-        LOGGER.warn("Could not find repo digest for image '{}'", getBaseRepoTag(participatingContainer));
+        LOGGER.warn("Could not find repo digest for image '{}'", withBase.baseRepoTag());
         continue;
       }
 
       foo.add(new ContainerWithRemoteInfo(
-        participatingContainer,
-        dockerRegistry.getDigest(getImage(participatingContainer), getTag(participatingContainer)),
+        withBase,
+        dockerRegistry.getDigest(withBase.baseImage(), withBase.baseTag()),
         inspect,
-        client.inspectImageCmd(participatingContainer.getImageId()).exec()
+        client.inspectImageCmd(container.getImageId()).exec()
       ));
     }
 
     return foo;
   }
 
-  private void pullUnknownBaseImages(Collection<Container> participatingContainers) throws InterruptedException {
+  private void pullUnknownBaseImages(Collection<ContainerWithBase> participatingContainers)
+    throws InterruptedException {
     Set<String> knownImages = client.listImagesCmd()
       .exec()
       .stream()
@@ -139,12 +167,12 @@ public class ImageUpdateChecker {
       .flatMap(it -> Arrays.stream(it.getRepoTags()))
       .collect(Collectors.toSet());
 
-    for (Container container : participatingContainers) {
-      String image = getImage(container);
-      String tag = getTag(container);
+    for (ContainerWithBase withBase : participatingContainers) {
+      String image = withBase.baseImage();
+      String tag = withBase.baseTag();
 
       if (knownImages.contains(image + ":" + tag)) {
-        LOGGER.debug("Found base image '{}':'{}' for {}", image, tag, container.getNames());
+        LOGGER.debug("Found base image '{}':'{}' for {}", image, tag, withBase.container().getNames());
         continue;
       }
 
@@ -161,47 +189,78 @@ public class ImageUpdateChecker {
   }
 
   private ContainerWithRemoteInfo updateBaseImageIfNeeded(ContainerWithRemoteInfo info) throws InterruptedException {
-    boolean isBaseImageUpToDate = Objects.requireNonNull(info.localBaseImage().getRepoDigests())
-      .stream()
-      .anyMatch(it -> it.endsWith(info.currentRemoteDigest()));
+    Container container = info.container().container();
 
-    if (!isBaseImageUpToDate) {
-      LOGGER.info("Updating base image '{}'", getBaseRepoTag(info.container()));
-      pullBaseImage(getImage(info.container()), getTag(info.container()));
+    if (info.baseImageOutdated()) {
+      LOGGER.info("Updating base image '{}'", getBaseRepoTag(container));
+      pullBaseImage(getBaseImage(container), getBaseTag(container));
 
       // re-fetch image
       return new ContainerWithRemoteInfo(
         info.container(),
         info.currentRemoteDigest(),
-        client.inspectImageCmd(getBaseRepoTag(info.container())).exec(),
+        client.inspectImageCmd(getBaseRepoTag(container)).exec(),
         info.containerImage()
       );
     } else {
-      LOGGER.debug("Base image '{}' is up to date", getBaseRepoTag(info.container()));
+      LOGGER.debug("Base image '{}' is up to date", getBaseRepoTag(container));
     }
     return info;
   }
 
-  private Collection<Container> getParticipatingContainers() {
+  private Collection<ContainerWithBase> getParticipatingBaseTaggedContainers() {
     return client.listContainersCmd()
       .exec()
       .stream()
-      .filter(ContainerUtils::isParticipating)
+      .filter(enrollmentMode::isParticipating)
+      .filter(ContainerWithBaseUtils::isTaggedWithBase)
+      .flatMap(container -> ContainerWithBase.forContainer(client, libraryHelper, container).stream())
       .collect(Collectors.toMap(
-        Container::getImageId,
-        container -> container,
+        withBase -> withBase.container().getImageId(),
+        withBase -> withBase,
         (a, b) -> a
       )).values();
   }
 
+  private Collection<ContainerWithBase> getParticipatingBasicContainers() {
+    return client.listContainersCmd()
+      .exec()
+      .stream()
+      .filter(enrollmentMode::isParticipating)
+      .filter(Predicate.not(ContainerWithBaseUtils::isTaggedWithBase))
+      .flatMap(container -> ContainerWithBase.forContainer(client, libraryHelper, container).stream())
+      .collect(Collectors.toMap(
+        withBase -> withBase.container().getImageId(),
+        withBase -> withBase,
+        (a, b) -> a
+      )).values();
+  }
 
   private record ContainerWithRemoteInfo(
-    Container container,
+    ContainerWithBase container,
     String currentRemoteDigest,
     InspectImageResponse localBaseImage,
     InspectImageResponse containerImage
   ) {
 
+    public boolean baseImageOutdated() {
+      return Objects.requireNonNull(localBaseImage().getRepoDigests())
+        .stream()
+        .noneMatch(it -> it.endsWith(currentRemoteDigest()));
+    }
+
+    public LighthouseImageUpdate toUpdate(MetadataFetcher metadataFetcher)
+      throws IOException, URISyntaxException, InterruptedException {
+
+      return new LighthouseImageUpdate(
+        container().container().getImageId(),
+        containerImage().getRepoTags(),
+        currentRemoteDigest(),
+        container().baseImage(),
+        container().baseTag(),
+        metadataFetcher.fetch(container().baseImage(), container().baseTag())
+      );
+    }
   }
 
 }
