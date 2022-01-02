@@ -21,7 +21,7 @@ public interface CliArguments {
   Optional<String> dockerConfigPath();
 
   @Option(names = "--require-label", description = "Ignore containers without 'lighthouse.enable' label")
-  boolean optOut();
+  boolean requireLabel();
 
   @Parameter(index = 0, description = "Discord webhook URL", paramLabel = "URL")
   String webhookUrl();

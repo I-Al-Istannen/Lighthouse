@@ -24,7 +24,7 @@ public enum EnrollmentMode {
       return false;
     }
     if (enabledStatus == null && this == OPT_OUT) {
-      return false;
+      return true;
     }
 
     if (!enabledStatus.equalsIgnoreCase("true") && !enabledStatus.equalsIgnoreCase("false")) {

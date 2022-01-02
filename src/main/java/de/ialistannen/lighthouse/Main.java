@@ -34,7 +34,7 @@ public class Main {
   public static void main(String[] args) throws IOException, URISyntaxException, InterruptedException {
     CliArguments arguments = new CliArgumentsParser().parseOrExit(args);
     int checkFrequencySeconds = arguments.checkIntervalSeconds().orElse((int) TimeUnit.HOURS.toSeconds(12));
-    EnrollmentMode enrollmentMode = arguments.optOut() ? EnrollmentMode.OPT_OUT : EnrollmentMode.OPT_IN;
+    EnrollmentMode enrollmentMode = arguments.requireLabel() ? EnrollmentMode.OPT_IN : EnrollmentMode.OPT_OUT;
 
     HttpClient httpClient = HttpClient.newBuilder().build();
 
