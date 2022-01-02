@@ -57,6 +57,11 @@ OPTIONS
 ```
 
 ### Example
+
+<details>
+
+<summary>Docker run</summary>
+
 ```
 docker run                                                \
   --rm                                                    \
@@ -64,13 +69,38 @@ docker run                                                \
   -v /root/.docker/config.json:/root/.docker/config.json  \
   --restart always                                        \
   ghcr.io/i-al-istannen/lighthouse:latest                 \
-  <discord webhook url>                                   \
+  https://discord.com/api/webhooks/.....                  \
   --mention-user-id 12345678                              \
   --mention-text "A wild update appeared!"
 ```
 The root config was mounted through as it contained authentication credentials
 for registries. If you store those in a different config, pass that one along
 instead.
+
+</details>
+
+<details>
+
+<summary>Docker compose</summary>
+
+```yml
+version: "3.9"
+services:
+  lighthouse:
+    image: "ghcr.io/i-al-istannen/lighthouse:latest"
+    volumes:
+      # Lighthouse needs to talk to docker
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Registry authentication is stored in the docker config.
+      # Mount through whatever config file you need.
+      - /root/.docker/config.json:/root/.docker/config.json
+    command:
+      - "--mention-user-id"
+      - "12345678"
+      - "https://discord.com/api/webhooks/....."
+    restart: always
+```
+</details>
 
 You also need to ensure you label all your containers with `lighthouse.base`,
 e.g. `lighthouse.base=nginx:stable`.
