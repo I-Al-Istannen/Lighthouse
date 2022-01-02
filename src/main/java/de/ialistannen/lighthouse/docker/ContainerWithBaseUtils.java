@@ -15,7 +15,11 @@ public class ContainerWithBaseUtils {
   }
 
   public static String getBaseTag(Container container) {
-    return container.getLabels().get(BASE_IMAGE_LABEL).split(":")[1];
+    String[] parts = container.getLabels().get(BASE_IMAGE_LABEL).split(":");
+    if (parts.length == 1) {
+      return "latest";
+    }
+    return parts[1];
   }
 
   public static String getBaseRepoTag(Container container) {
