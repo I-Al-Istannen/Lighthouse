@@ -8,13 +8,13 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectImageResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.Container;
+import de.ialistannen.lighthouse.metadata.MetadataFetcher;
+import de.ialistannen.lighthouse.model.EnrollmentMode;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
 import de.ialistannen.lighthouse.registry.DigestFetchException;
 import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
 import de.ialistannen.lighthouse.registry.DockerRegistry;
-import de.ialistannen.lighthouse.metadata.MetadataFetcher;
 import de.ialistannen.lighthouse.registry.TokenFetchException;
-import de.ialistannen.lighthouse.model.EnrollmentMode;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -85,7 +85,7 @@ public class ImageUpdateChecker {
 
     for (ContainerWithRemoteInfo info : getContainersWithRemoteInfo(getParticipatingBasicContainers())) {
       if (info.baseImageOutdated()) {
-        updates.add(info.toUpdate(metadataFetcher));
+        updates.add(info.toUpdate(metadataFetcher, libraryHelper));
       }
     }
 
@@ -113,7 +113,7 @@ public class ImageUpdateChecker {
         info.container().baseRepoTag()
       );
 
-      updates.add(info.toUpdate(metadataFetcher));
+      updates.add(info.toUpdate(metadataFetcher, libraryHelper));
     }
 
     return updates;
@@ -144,17 +144,21 @@ public class ImageUpdateChecker {
         LOGGER.warn("Container '{}' has no image id", (Object) container.getNames());
         continue;
       }
-      InspectImageResponse inspect = client.inspectImageCmd(withBase.baseImage()).exec();
+      InspectImageResponse inspect = client
+        .inspectImageCmd(withBase.inspectImageName(libraryHelper))
+        .exec();
       if (inspect.getRepoDigests() == null || inspect.getRepoDigests().isEmpty()) {
         LOGGER.warn("Could not find repo digest for image '{}'", withBase.baseRepoTag());
         continue;
       }
 
+      String remoteDigest = dockerRegistry.getDigest(withBase.baseImage(), withBase.baseTag());
+      InspectImageResponse localBaseImage = client.inspectImageCmd(container.getImageId()).exec();
       foo.add(new ContainerWithRemoteInfo(
         withBase,
-        dockerRegistry.getDigest(withBase.baseImage(), withBase.baseTag()),
+        remoteDigest,
         inspect,
-        client.inspectImageCmd(container.getImageId()).exec()
+        localBaseImage
       ));
     }
 
@@ -252,14 +256,14 @@ public class ImageUpdateChecker {
         .noneMatch(it -> it.endsWith(currentRemoteDigest()));
     }
 
-    public LighthouseImageUpdate toUpdate(MetadataFetcher metadataFetcher)
+    public LighthouseImageUpdate toUpdate(MetadataFetcher metadataFetcher, DockerLibraryHelper libraryHelper)
       throws IOException, URISyntaxException, InterruptedException {
 
       return new LighthouseImageUpdate(
         container().container().getImageId(),
         containerImage().getRepoTags(),
         currentRemoteDigest(),
-        container().baseImage(),
+        libraryHelper.getFriendlyName(container().baseImage()),
         container().baseTag(),
         metadataFetcher.fetch(container().baseImage(), container().baseTag())
       );

@@ -21,6 +21,14 @@ record ContainerWithBase(
   }
 
   /**
+   * @param libraryHelper the library helper to normalize names
+   * @return the name of the image+tag in a way that can be passed to {@code "docker image inspect"}
+   */
+  public String inspectImageName(DockerLibraryHelper libraryHelper) {
+    return libraryHelper.getFriendlyName(baseImage) + ":" + baseTag;
+  }
+
+  /**
    * Creates a {@link ContainerWithBase} for a docker container.
    *
    * @param client the docker client for requests

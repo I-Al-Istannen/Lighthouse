@@ -87,6 +87,21 @@ public class DockerLibraryHelper {
     return normalizedName;
   }
 
+  /**
+   * @param image the image name
+   * @return the friendly name, i.e. without {@code "index.docker.io"} or {@code "library/"}
+   */
+  public String getFriendlyName(String image) {
+    String name = normalizeImageName(image);
+    if (name.startsWith("index.docker.io/")) {
+      name = name.replaceFirst("index.docker.io/", "");
+    }
+    if (name.startsWith("library/")) {
+      name = name.replaceFirst("library/", "");
+    }
+    return name;
+  }
+
   private boolean isLibraryImage(String image) {
     if (image.startsWith("docker.io/")) {
       return isLibraryImage(image.replaceFirst("docker.io/", ""));
