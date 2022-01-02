@@ -263,7 +263,7 @@ public class ImageUpdateChecker {
         container().container().getImageId(),
         containerImage().getRepoTags(),
         currentRemoteDigest(),
-        libraryHelper.getFriendlyName(container().baseImage()),
+        container().baseImage(),
         container().baseTag(),
         metadataFetcher.fetch(container().baseImage(), container().baseTag())
       );

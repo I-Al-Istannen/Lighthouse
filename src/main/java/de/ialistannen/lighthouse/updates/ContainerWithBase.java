@@ -25,7 +25,7 @@ record ContainerWithBase(
    * @return the name of the image+tag in a way that can be passed to {@code "docker image inspect"}
    */
   public String inspectImageName(DockerLibraryHelper libraryHelper) {
-    return libraryHelper.getFriendlyName(baseImage) + ":" + baseTag;
+    return libraryHelper.getFriendlyImageName(baseImage) + ":" + baseTag;
   }
 
   /**
@@ -45,7 +45,7 @@ record ContainerWithBase(
       return Optional.of(
         new ContainerWithBase(
           container,
-          libraryHelper.normalizeImageName(ContainerWithBaseUtils.getBaseImage(container)),
+          libraryHelper.getFriendlyImageName(ContainerWithBaseUtils.getBaseImage(container)),
           ContainerWithBaseUtils.getBaseTag(container)
         )
       );
@@ -60,7 +60,7 @@ record ContainerWithBase(
     }
     String repoTag = imageResponse.getRepoTags().get(0);
     String[] parts = repoTag.split(":");
-    String image = libraryHelper.normalizeImageName(parts[0]);
+    String image = libraryHelper.getFriendlyImageName(parts[0]);
     String tag = parts[1];
 
     return Optional.of(new ContainerWithBase(container, image, tag));
