@@ -1,9 +1,9 @@
-package de.ialistannen.lighthouse.docker;
+package de.ialistannen.lighthouse.updates;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectImageResponse;
 import com.github.dockerjava.api.model.Container;
-import de.ialistannen.lighthouse.hub.DockerLibraryHelper;
+import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

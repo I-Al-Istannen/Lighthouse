@@ -2,7 +2,6 @@ package de.ialistannen.lighthouse.registry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import de.ialistannen.lighthouse.hub.DockerLibraryHelper;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;

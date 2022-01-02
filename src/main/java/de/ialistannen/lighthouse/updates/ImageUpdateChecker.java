@@ -1,17 +1,20 @@
-package de.ialistannen.lighthouse.docker;
+package de.ialistannen.lighthouse.updates;
 
-import static de.ialistannen.lighthouse.docker.ContainerWithBaseUtils.getBaseImage;
-import static de.ialistannen.lighthouse.docker.ContainerWithBaseUtils.getBaseRepoTag;
-import static de.ialistannen.lighthouse.docker.ContainerWithBaseUtils.getBaseTag;
+import static de.ialistannen.lighthouse.updates.ContainerWithBaseUtils.getBaseImage;
+import static de.ialistannen.lighthouse.updates.ContainerWithBaseUtils.getBaseRepoTag;
+import static de.ialistannen.lighthouse.updates.ContainerWithBaseUtils.getBaseTag;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectImageResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.Container;
-import de.ialistannen.lighthouse.hub.DockerLibraryHelper;
+import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
+import de.ialistannen.lighthouse.registry.DigestFetchException;
+import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
 import de.ialistannen.lighthouse.registry.DockerRegistry;
 import de.ialistannen.lighthouse.registry.MetadataFetcher;
-import de.ialistannen.lighthouse.util.EnrollmentMode;
+import de.ialistannen.lighthouse.registry.TokenFetchException;
+import de.ialistannen.lighthouse.model.EnrollmentMode;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -67,8 +70,8 @@ public class ImageUpdateChecker {
    * @throws IOException if an error happens looking up remote information
    * @throws URISyntaxException if the base image contains invalid characters
    * @throws InterruptedException ?
-   * @throws de.ialistannen.lighthouse.hub.DigestFetchException if the remote denied serving the digest
-   * @throws de.ialistannen.lighthouse.hub.TokenFetchException if the auth token could not be retrieved
+   * @throws DigestFetchException if the remote denied serving the digest
+   * @throws TokenFetchException if the auth token could not be retrieved
    */
   public List<LighthouseImageUpdate> check() throws IOException, URISyntaxException, InterruptedException {
     List<LighthouseImageUpdate> updates = new ArrayList<>(checkBaseTaggedContainers());

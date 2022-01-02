@@ -1,4 +1,4 @@
-package de.ialistannen.lighthouse.config;
+package de.ialistannen.lighthouse.dockerconfig;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;

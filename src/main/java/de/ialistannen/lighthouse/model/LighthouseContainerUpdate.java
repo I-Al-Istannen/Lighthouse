@@ -1,4 +1,4 @@
-package de.ialistannen.lighthouse.docker;
+package de.ialistannen.lighthouse.model;
 
 import java.util.List;
 

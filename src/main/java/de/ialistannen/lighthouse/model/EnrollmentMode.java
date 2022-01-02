@@ -1,4 +1,4 @@
-package de.ialistannen.lighthouse.util;
+package de.ialistannen.lighthouse.model;
 
 import com.github.dockerjava.api.model.Container;
 import org.slf4j.Logger;

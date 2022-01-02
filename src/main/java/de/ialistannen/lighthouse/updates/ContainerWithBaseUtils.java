@@ -1,4 +1,4 @@
-package de.ialistannen.lighthouse.docker;
+package de.ialistannen.lighthouse.updates;
 
 import com.github.dockerjava.api.model.Container;
 

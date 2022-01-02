@@ -2,10 +2,7 @@ package de.ialistannen.lighthouse.registry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import de.ialistannen.lighthouse.config.DockerRegistryAuth;
-import de.ialistannen.lighthouse.hub.DigestFetchException;
-import de.ialistannen.lighthouse.hub.DockerLibraryHelper;
-import de.ialistannen.lighthouse.hub.TokenFetchException;
+import de.ialistannen.lighthouse.dockerconfig.DockerRegistryAuth;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;

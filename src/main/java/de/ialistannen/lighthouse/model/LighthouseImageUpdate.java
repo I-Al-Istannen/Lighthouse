@@ -1,4 +1,4 @@
-package de.ialistannen.lighthouse.docker;
+package de.ialistannen.lighthouse.model;
 
 import de.ialistannen.lighthouse.registry.RemoteImageMetadata;
 import java.util.List;

@@ -1,6 +1,6 @@
 package de.ialistannen.lighthouse.notifier;
 
-import de.ialistannen.lighthouse.docker.LighthouseContainerUpdate;
+import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import java.util.List;
 
 public interface Notifier {

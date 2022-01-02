@@ -1,7 +1,11 @@
-package de.ialistannen.lighthouse.docker;
+package de.ialistannen.lighthouse.updates;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.model.Container;
+import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
+import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
+import de.ialistannen.lighthouse.registry.DigestFetchException;
+import de.ialistannen.lighthouse.registry.TokenFetchException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -34,8 +38,8 @@ public class ContainerUpdateChecker {
    * @throws IOException if an error happens looking up remote information
    * @throws URISyntaxException if the base image contains invalid characters
    * @throws InterruptedException ?
-   * @throws de.ialistannen.lighthouse.hub.DigestFetchException if the remote denied serving the digest
-   * @throws de.ialistannen.lighthouse.hub.TokenFetchException if the auth token could not be retrieved
+   * @throws DigestFetchException if the remote denied serving the digest
+   * @throws TokenFetchException if the auth token could not be retrieved
    * @see ImageUpdateChecker#check()
    */
   public List<LighthouseContainerUpdate> check() throws IOException, URISyntaxException, InterruptedException {

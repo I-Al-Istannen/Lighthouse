@@ -1,4 +1,4 @@
-package de.ialistannen.lighthouse.hub;
+package de.ialistannen.lighthouse.registry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;

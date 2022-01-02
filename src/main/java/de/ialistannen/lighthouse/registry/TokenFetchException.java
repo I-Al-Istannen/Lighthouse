@@ -1,4 +1,4 @@
-package de.ialistannen.lighthouse.hub;
+package de.ialistannen.lighthouse.registry;
 
 public class TokenFetchException extends RuntimeException {
 
