@@ -145,8 +145,9 @@ public class ImageUpdateChecker {
         LOGGER.warn("Container '{}' has no image id", (Object) container.getNames());
         continue;
       }
+
       InspectImageResponse inspect = client
-        .inspectImageCmd(withBase.baseImage())
+        .inspectImageCmd(withBase.baseRepoTag())
         .exec();
       if (inspect.getRepoDigests() == null || inspect.getRepoDigests().isEmpty()) {
         LOGGER.warn("Could not find repo digest for image '{}'", withBase.baseRepoTag());
@@ -183,6 +184,7 @@ public class ImageUpdateChecker {
         LOGGER.debug("Found base image '{}':'{}' for {}", image, tag, withBase.container().getNames());
         continue;
       }
+      LOGGER.debug("Pulling image '{}':'{}' for {}", image, tag, withBase.container().getNames());
 
       pullBaseImage(image, tag);
     }
@@ -262,7 +264,7 @@ public class ImageUpdateChecker {
       );
       return Optional.empty();
     }
-    String repoTag = imageResponse.getRepoTags().get(1);
+    String repoTag = imageResponse.getRepoTags().get(0);
     String[] parts = repoTag.split(":");
     String image = libraryHelper.getFriendlyImageName(parts[0]);
     String tag = parts[1];
