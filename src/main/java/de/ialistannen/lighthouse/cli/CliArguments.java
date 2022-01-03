@@ -23,6 +23,9 @@ public interface CliArguments {
   @Option(names = "--require-label", description = "Ignore containers without 'lighthouse.enable' label")
   boolean requireLabel();
 
+  @Option(names = "--notify-again", description = "Notify you more than once about an image update")
+  boolean alwaysNotify();
+
   @Parameter(index = 0, description = "Discord webhook URL", paramLabel = "URL")
   String webhookUrl();
 

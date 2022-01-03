@@ -12,6 +12,7 @@ import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.notifier.DiscordNotifier;
 import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
 import de.ialistannen.lighthouse.registry.DockerRegistry;
+import de.ialistannen.lighthouse.storage.FileUpdateFilter;
 import de.ialistannen.lighthouse.updates.ContainerUpdateChecker;
 import de.ialistannen.lighthouse.updates.ImageUpdateChecker;
 import java.io.IOException;
@@ -65,12 +66,21 @@ public class Main {
       arguments.mentionText()
     );
 
+    FileUpdateFilter updateFilter = new FileUpdateFilter(Path.of("data/known-images.json"));
     //noinspection InfiniteLoopStatement
     while (true) {
       try {
         LOGGER.info("Checking for updates...");
         List<LighthouseContainerUpdate> updates = containerUpdateChecker.check();
+
+        if (!arguments.alwaysNotify()) {
+          updates = updateFilter.filter(updates);
+        }
+
         notifier.notify(updates);
+
+        // AFTER notify was successful!
+        updateFilter.commit();
       } catch (Exception e) {
         LOGGER.error("Failed to check for updates", e);
         notifier.notify(e);

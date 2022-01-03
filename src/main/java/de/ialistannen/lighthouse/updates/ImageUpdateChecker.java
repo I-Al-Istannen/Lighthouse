@@ -262,7 +262,7 @@ public class ImageUpdateChecker {
       );
       return Optional.empty();
     }
-    String repoTag = imageResponse.getRepoTags().get(0);
+    String repoTag = imageResponse.getRepoTags().get(1);
     String[] parts = repoTag.split(":");
     String image = libraryHelper.getFriendlyImageName(parts[0]);
     String tag = parts[1];
