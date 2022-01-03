@@ -19,15 +19,31 @@ updated. Enter **Lighthouse**.
 </div>
 
 ## Features
-Lighthouse periodically inspects all running containers, extracts their image
-and the base image you provided as a label. It verifies the base image is
-up to date using the docker registry and then *also verifies*, that your
-container image is actually based on the most up-to-date version of the base
-image.
+Additionally to watching all containers for updates, **Lighthouse** also
+periodically inspects all running containers, extracts their image and the base
+image you provided as a label. It verifies the base image is up to date using
+the docker registry and then *also verifies*, that your container image is
+actually based on the most up-to-date version of the base image.
 
-If Lighthouse detects that the local reference base image is outdated, it will
+If **Lighthouse** detects that the local reference base image is outdated, it will
 automatically update it to ensure all checks work correctly. If the container
 is based on an outdated image, it will notify you in discord.
+
+If **Lighthouse** finds a container without a `lighthouse.base` label, it will try
+to find updates for the container's image instead. This ensures containers
+running images unchanged will also be checked for updates - even without any
+special label.
+
+If you do not want to check all containers for updates, you can set
+**Lighthouse** to opt-in mode using the `--require-label` flag. If it is set,
+**Lighthouse** will only consider containers with the `lighthouse.enable=true`
+label.
+
+To save you from many duplicate notifications, **Lighthouse** keeps an internal
+database of all images it *successfully* notified you about. Unless you pass
+the `--notify-again` flag, **Lighthouse** will only notify you once per image.
+It might be a good idea to mount the `/data` directory in the container, so
+this database is not lost when you recreate the container.
 
 ### As bulletpoints
 - Watch labeled containers
@@ -54,6 +70,8 @@ OPTIONS
   --mention-user-id MENTION-USER-ID                Discord user id to mention
   --mention-text MENTION-TEXT                      Text to send in Discord
   --docker-config DOCKER-CONFIG                    Path to docker config
+  --require-label                                  Ignore containers without 'lighthouse.enable' label
+  --notify-again                                   Notify you more than once about an image update
 ```
 
 ### Example
@@ -94,6 +112,10 @@ services:
       # Registry authentication is stored in the docker config.
       # Mount through whatever config file you need.
       - /root/.docker/config.json:/root/.docker/config.json
+      # Persist known image config, so you do not get notified
+      # multiple times for a single image, even if you recreate
+      # the container.
+      - data:/data
     command:
       - "--mention-user-id"
       - "12345678"
@@ -102,8 +124,10 @@ services:
 ```
 </details>
 
-You also need to ensure you label all your containers with `lighthouse.base`,
-e.g. `lighthouse.base=nginx:stable`.
+You also need to ensure you label all your derived containers with
+`lighthouse.base`, e.g. `lighthouse.base=nginx:stable`.
+If you are running a container unchanged (e.g. `docker run nginx:stable`) you
+don't need to do anything, unless you set **Lighthouse** to opt-in.
 
 
 ## How it works
