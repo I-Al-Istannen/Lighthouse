@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -85,7 +86,7 @@ public class ImageUpdateChecker {
 
     for (ContainerWithRemoteInfo info : getContainersWithRemoteInfo(getParticipatingBasicContainers())) {
       if (info.baseImageOutdated()) {
-        updates.add(info.toUpdate(metadataFetcher, libraryHelper));
+        updates.add(info.toUpdate(metadataFetcher));
       }
     }
 
@@ -113,7 +114,7 @@ public class ImageUpdateChecker {
         info.container().baseRepoTag()
       );
 
-      updates.add(info.toUpdate(metadataFetcher, libraryHelper));
+      updates.add(info.toUpdate(metadataFetcher));
     }
 
     return updates;
@@ -145,7 +146,7 @@ public class ImageUpdateChecker {
         continue;
       }
       InspectImageResponse inspect = client
-        .inspectImageCmd(withBase.inspectImageName(libraryHelper))
+        .inspectImageCmd(withBase.baseImage())
         .exec();
       if (inspect.getRepoDigests() == null || inspect.getRepoDigests().isEmpty()) {
         LOGGER.warn("Could not find repo digest for image '{}'", withBase.baseRepoTag());
@@ -221,7 +222,7 @@ public class ImageUpdateChecker {
       .stream()
       .filter(enrollmentMode::isParticipating)
       .filter(ContainerWithBaseUtils::isTaggedWithBase)
-      .flatMap(container -> ContainerWithBase.forContainer(client, libraryHelper, container).stream())
+      .flatMap(container -> withBase(container).stream())
       .collect(Collectors.toMap(
         withBase -> withBase.container().getImageId(),
         withBase -> withBase,
@@ -235,12 +236,38 @@ public class ImageUpdateChecker {
       .stream()
       .filter(enrollmentMode::isParticipating)
       .filter(Predicate.not(ContainerWithBaseUtils::isTaggedWithBase))
-      .flatMap(container -> ContainerWithBase.forContainer(client, libraryHelper, container).stream())
+      .flatMap(container -> withBase(container).stream())
       .collect(Collectors.toMap(
         withBase -> withBase.container().getImageId(),
         withBase -> withBase,
         (a, b) -> a
       )).values();
+  }
+
+  private Optional<ContainerWithBase> withBase(Container container) {
+    if (ContainerWithBaseUtils.isTaggedWithBase(container)) {
+      return Optional.of(
+        new ContainerWithBase(
+          container,
+          libraryHelper.getFriendlyImageName(ContainerWithBaseUtils.getBaseImage(container)),
+          ContainerWithBaseUtils.getBaseTag(container)
+        )
+      );
+    }
+    InspectImageResponse imageResponse = client.inspectImageCmd(container.getImage()).exec();
+    if (imageResponse.getRepoTags() == null || imageResponse.getRepoTags().isEmpty()) {
+      LOGGER.info(
+        "Enrolled container '{}' has an unlabeled image and no 'lighthouse.base' tag",
+        (Object) container.getNames()
+      );
+      return Optional.empty();
+    }
+    String repoTag = imageResponse.getRepoTags().get(0);
+    String[] parts = repoTag.split(":");
+    String image = libraryHelper.getFriendlyImageName(parts[0]);
+    String tag = parts[1];
+
+    return Optional.of(new ContainerWithBase(container, image, tag));
   }
 
   private record ContainerWithRemoteInfo(
@@ -256,7 +283,7 @@ public class ImageUpdateChecker {
         .noneMatch(it -> it.endsWith(currentRemoteDigest()));
     }
 
-    public LighthouseImageUpdate toUpdate(MetadataFetcher metadataFetcher, DockerLibraryHelper libraryHelper)
+    public LighthouseImageUpdate toUpdate(MetadataFetcher metadataFetcher)
       throws IOException, URISyntaxException, InterruptedException {
 
       return new LighthouseImageUpdate(

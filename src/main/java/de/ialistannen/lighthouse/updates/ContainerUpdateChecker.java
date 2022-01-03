@@ -66,7 +66,7 @@ public class ContainerUpdateChecker {
         continue;
       }
       LighthouseImageUpdate update = imageMap.get(container.getImageId());
-      LOGGER.info("Container '{}' has an update ({})", getContainerNames(container), update.remoteImageId());
+      LOGGER.info("Container '{}' has an update ({})", getContainerNames(container), update.remoteManifestDigest());
 
       updates.add(
         new LighthouseContainerUpdate(

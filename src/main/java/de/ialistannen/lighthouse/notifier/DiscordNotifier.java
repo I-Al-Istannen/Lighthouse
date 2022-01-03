@@ -183,7 +183,7 @@ public class DiscordNotifier implements Notifier {
   private ObjectNode buildRemoteImageIdField(LighthouseImageUpdate imageUpdate) {
     ObjectNode remoteImageId = objectMapper.createObjectNode();
     remoteImageId.set("name", new TextNode("New digest"));
-    remoteImageId.set("value", new TextNode("`" + imageUpdate.remoteImageId() + "`"));
+    remoteImageId.set("value", new TextNode("`" + imageUpdate.remoteManifestDigest() + "`"));
 
     return remoteImageId;
   }
