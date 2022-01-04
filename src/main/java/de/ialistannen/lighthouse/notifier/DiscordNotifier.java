@@ -34,17 +34,20 @@ public class DiscordNotifier implements Notifier {
   private final ObjectMapper objectMapper;
   private final Optional<String> mentionUserId;
   private final Optional<String> mentionText;
+  private final Optional<String> hostname;
 
   public DiscordNotifier(
     HttpClient httpClient,
     URI url,
     Optional<String> mentionUserId,
-    Optional<String> mentionText
+    Optional<String> mentionText,
+    Optional<String> hostname
   ) {
     this.httpClient = httpClient;
     this.url = url;
     this.mentionUserId = mentionUserId;
     this.mentionText = mentionText;
+    this.hostname = hostname;
     this.objectMapper = new ObjectMapper();
   }
 
@@ -90,7 +93,7 @@ public class DiscordNotifier implements Notifier {
         "content",
         new TextNode("Hey, <@" + id + "> " + mentionText.orElse("I got some news!"))
       ));
-      payload.set("username", new TextNode("Lighthouse"));
+      payload.set("username", new TextNode("Lighthouse" + hostname.map(it -> " (" + it + ")").orElse("")));
 
       HttpRequest request = HttpRequest.newBuilder(url)
         .POST(BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))

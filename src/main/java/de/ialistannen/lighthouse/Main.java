@@ -70,7 +70,8 @@ public class Main {
       httpClient,
       new URI(arguments.webhookUrl()),
       arguments.mentionUserId(),
-      arguments.mentionText()
+      arguments.mentionText(),
+      arguments.hostname()
     );
 
     FileUpdateFilter updateFilter = new FileUpdateFilter(Path.of("data/known-images.json"));
