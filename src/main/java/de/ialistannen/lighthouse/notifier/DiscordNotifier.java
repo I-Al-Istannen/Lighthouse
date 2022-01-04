@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.IntNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.Throwables;
+import com.google.common.collect.Lists;
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
 import de.ialistannen.lighthouse.registry.RemoteImageMetadata;
@@ -79,8 +80,10 @@ public class DiscordNotifier implements Notifier {
     }
     LOGGER.info("Notifying in discord");
 
-    ObjectNode payload = buildPayload(updates);
-    sendPayload(payload);
+    for (List<LighthouseContainerUpdate> batch : Lists.partition(updates, 10)) {
+      ObjectNode payload = buildPayload(batch);
+      sendPayload(payload);
+    }
   }
 
   private void sendPayload(ObjectNode payload) {
@@ -113,9 +116,12 @@ public class DiscordNotifier implements Notifier {
     ObjectNode payload = objectMapper.createObjectNode();
     ArrayNode embeds = objectMapper.createArrayNode();
 
+    if (updates.size() > 10) {
+      throw new IllegalArgumentException("Got more than 10 updates!");
+    }
+
     updates.stream()
       .map(this::buildEmbed)
-      .limit(10)
       .forEach(embeds::add);
 
     payload.set("embeds", embeds);
