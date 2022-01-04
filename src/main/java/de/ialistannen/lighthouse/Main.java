@@ -1,5 +1,9 @@
 package de.ialistannen.lighthouse;
 
+import com.cronutils.model.Cron;
+import com.cronutils.model.CronType;
+import com.cronutils.model.definition.CronDefinitionBuilder;
+import com.cronutils.parser.CronParser;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
@@ -13,6 +17,7 @@ import de.ialistannen.lighthouse.notifier.DiscordNotifier;
 import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
 import de.ialistannen.lighthouse.registry.DockerRegistry;
 import de.ialistannen.lighthouse.storage.FileUpdateFilter;
+import de.ialistannen.lighthouse.timing.CronRunner;
 import de.ialistannen.lighthouse.updates.ContainerUpdateChecker;
 import de.ialistannen.lighthouse.updates.ImageUpdateChecker;
 import java.io.IOException;
@@ -21,10 +26,8 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +37,11 @@ public class Main {
 
   public static void main(String[] args) throws IOException, URISyntaxException, InterruptedException {
     CliArguments arguments = new CliArgumentsParser().parseOrExit(args);
-    int checkFrequencySeconds = arguments.checkIntervalSeconds().orElse((int) TimeUnit.HOURS.toSeconds(12));
+    String cronTimesString = arguments.checkTimes().orElse("23 08 * * *");
+    Cron cronTime = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(CronType.UNIX))
+      .parse(cronTimesString)
+      .validate();
+
     EnrollmentMode enrollmentMode = arguments.requireLabel() ? EnrollmentMode.OPT_IN : EnrollmentMode.OPT_OUT;
 
     HttpClient httpClient = HttpClient.newBuilder().build();
@@ -67,9 +74,11 @@ public class Main {
     );
 
     FileUpdateFilter updateFilter = new FileUpdateFilter(Path.of("data/known-images.json"));
-    //noinspection InfiniteLoopStatement
-    while (true) {
-      try {
+
+    new CronRunner(
+      cronTime,
+      notifier,
+      () -> {
         LOGGER.info("Checking for updates...");
         List<LighthouseContainerUpdate> updates = containerUpdateChecker.check();
 
@@ -81,25 +90,8 @@ public class Main {
 
         // AFTER notify was successful!
         updateFilter.commit();
-      } catch (Exception e) {
-        LOGGER.error("Failed to check for updates", e);
-        notifier.notify(e);
       }
-      Instant nextWakeup = Instant.now().plusSeconds(checkFrequencySeconds);
-      while (Instant.now().isBefore(nextWakeup)) {
-        LOGGER.debug(
-          "Sleeping until {} ({} seconds)",
-          nextWakeup,
-          nextWakeup.getEpochSecond() - Instant.now().getEpochSecond()
-        );
-        try {
-          //noinspection BusyWait
-          Thread.sleep(checkFrequencySeconds / 4 * 1000L);
-        } catch (InterruptedException e) {
-          LOGGER.info("Interrupted while sleeping", e);
-        }
-      }
-    }
+    ).runUntilSingularity();
   }
 
   private static List<DockerRegistryAuth> authsFromArgs(CliArguments arguments) throws IOException {

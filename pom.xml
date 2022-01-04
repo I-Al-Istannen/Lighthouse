@@ -116,6 +116,12 @@
       <version>${jbock.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>com.cronutils</groupId>
+      <artifactId>cron-utils</artifactId>
+      <version>9.1.6</version>
+    </dependency>
+
   </dependencies>
 
 </project>

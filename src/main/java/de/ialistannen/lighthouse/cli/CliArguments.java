@@ -8,8 +8,8 @@ import net.jbock.Parameter;
 @Command(name = "lighthouse", description = "Watches for docker base image updates", publicParser = true)
 public interface CliArguments {
 
-  @Option(names = "--check-interval-seconds", description = "Check interval in seconds")
-  Optional<Integer> checkIntervalSeconds();
+  @Option(names = "--check-times", description = "Check times in cron syntax (https://crontab.guru)")
+  Optional<String> checkTimes();
 
   @Option(names = "--mention-user-id", description = "Discord user id to mention")
   Optional<String> mentionUserId();
