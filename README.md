@@ -12,36 +12,36 @@ Existing tools like [Watchtower](https://github.com/containrrr/watchtower) or
 [Diun](https://github.com/crazy-max/diun) can only check for updates *of
 the running image* - but you are not running `nginx`, just something based off
 of it! You need a way to get notified when the *base image* of yours is
-updated. Enter **Lighthouse**.
+updated. Enter *Lighthouse*.
 
 <div align="center">
   <img align="middle" src="https://github.com/I-Al-Istannen/Lighthouse/blob/master/media/update-notification.png?raw=true" width="640">
 </div>
 
 ## Features
-Additionally to watching all containers for updates, **Lighthouse** also
+Additionally to watching all containers for updates, *Lighthouse* also
 periodically inspects all running containers, extracts their image and the base
 image you provided as a label. It verifies the base image is up to date using
 the docker registry and then *also verifies*, that your container image is
 actually based on the most up-to-date version of the base image.
 
-If **Lighthouse** detects that the local reference base image is outdated, it will
+If *Lighthouse* detects that the local reference base image is outdated, it will
 automatically update it to ensure all checks work correctly. If the container
 is based on an outdated image, it will notify you in discord.
 
-If **Lighthouse** finds a container without a `lighthouse.base` label, it will try
+If *Lighthouse* finds a container without a `lighthouse.base` label, it will try
 to find updates for the container's image instead. This ensures containers
 running images unchanged will also be checked for updates - even without any
 special label.
 
 If you do not want to check all containers for updates, you can set
-**Lighthouse** to opt-in mode using the `--require-label` flag. If it is set,
-**Lighthouse** will only consider containers with the `lighthouse.enable=true`
+*Lighthouse* to opt-in mode using the `--require-label` flag. If it is set,
+*Lighthouse* will only consider containers with the `lighthouse.enable=true`
 label.
 
-To save you from many duplicate notifications, **Lighthouse** keeps an internal
+To save you from many duplicate notifications, *Lighthouse* keeps an internal
 database of all images it *successfully* notified you about. Unless you pass
-the `--notify-again` flag, **Lighthouse** will only notify you once per image.
+the `--notify-again` flag, *Lighthouse* will only notify you once per image.
 It might be a good idea to mount the `/data` directory in the container, so
 this database is not lost when you recreate the container.
 
@@ -66,40 +66,20 @@ PARAMETERS
   URL  Discord webhook URL
 
 OPTIONS
-  --check-interval-seconds CHECK-INTERVAL-SECONDS  Check interval in seconds
-  --mention-user-id MENTION-USER-ID                Discord user id to mention
-  --mention-text MENTION-TEXT                      Text to send in Discord
-  --docker-config DOCKER-CONFIG                    Path to docker config
-  --require-label                                  Ignore containers without 'lighthouse.enable' label
-  --notify-again                                   Notify you more than once about an image update
+  --check-times CRONTAB  Check times in cron syntax (https://crontab.guru).
+                         Default: '23 08 * * *'
+  --mention MENTION      Discord mention (e.g. '<@userid>')
+  --mention-text TEXT    Text to send in Discord
+  --docker-config PATH   Path to docker config. Default: /root/.docker/config.json
+  --hostname NAME        The hostname to mention in notifications
+  --require-label        Ignore containers without 'lighthouse.enable' label.
+                         Default: false
+  --notify-again         Notify you more than once about an image update.
+                         Default: false
 ```
+
 
 ### Example
-
-<details>
-
-<summary>Docker run</summary>
-
-```
-docker run                                                \
-  --rm                                                    \
-  -v /var/run/docker.sock:/var/run/docker.sock            \
-  -v /root/.docker/config.json:/root/.docker/config.json  \
-  --restart always                                        \
-  ghcr.io/i-al-istannen/lighthouse:latest                 \
-  https://discord.com/api/webhooks/.....                  \
-  --mention-user-id 12345678                              \
-  --mention-text "A wild update appeared!"
-```
-The root config was mounted through as it contained authentication credentials
-for registries. If you store those in a different config, pass that one along
-instead.
-
-</details>
-
-<details>
-
-<summary>Docker compose</summary>
 
 ```yml
 version: "3.9"
@@ -117,30 +97,48 @@ services:
       # the container.
       - data:/data
     command:
-      - "--mention-user-id"
-      - "12345678"
-      - "https://discord.com/api/webhooks/....."
+      # Include this name in the alert title
+      - '--hostname=Yggdrasil'
+      # Tag the user with id 12345678
+      - '--mention=<@12345678>'
+      # Include this text after the mention
+      - '--mentionText=I got some news!'
+      # Run every day at 06:13 (https://crontab.guru/#13_06_*_*_*)
+      - '--check-times=13 06 * * *'
+      # Post to this webhook
+      - 'https://discord.com/api/webhooks/.....'
     restart: always
+
+volumes:
+  data: {}
 ```
-</details>
 
 You also need to ensure you label all your derived containers with
 `lighthouse.base`, e.g. `lighthouse.base=nginx:stable`.
 If you are running a container unchanged (e.g. `docker run nginx:stable`) you
-don't need to do anything, unless you set **Lighthouse** to opt-in.
+don't need to do anything, unless you set *Lighthouse* to opt-in.
+
+----
+
+It might make sense to structure your dockerfiles in the following way:
+```Dockerfile
+FROM nginx:stable
+LABEL lighthouse.base=nginx:stable
+```
+This ensures the lighthouse tag is always present and up to date.
 
 
 ## How it works
 
 ### Finding the base image of a container
 Sadly, docker does no longer build a "Parent" chain, which makes it impossible
-to reliably find the correct base image. Therefore, **Lighthouse** requires you
+to reliably find the correct base image. Therefore, *Lighthouse* requires you
 to tag containers with their base image.
 
 ### Checking for updates
 The docker registry API allows you to check whether an image is up-to-date, but
 you have no idea what image version your container is based on! To combat this,
-**Lighthouse** always keeps a *reference copy* of the base images on hand and
+*Lighthouse* always keeps a *reference copy* of the base images on hand and
 compares their *layers* with the layers of your container's image. If any layer
 is not present in your container, the base image likely was updated in the
 meantime.
@@ -149,10 +147,10 @@ An up-to-date base image must be available locally, as the registry only serves
 the hashes of gzip-encoded layers which can not be mapped to the decompressed
 layers in the container image. As updates are only checked against the local
 copy for this reason, the local copy needs to be up-to-date, which
-**Lighthouse** automatically manages for you.
+*Lighthouse* automatically manages for you.
 
 ### Providing information about updates
-Once an update is found, **Lighthouse** will fetch up-to-date image information
+Once an update is found, *Lighthouse* will fetch up-to-date image information
 from docker hub, to ensure the notification message is useful.
 
 ----

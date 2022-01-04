@@ -33,20 +33,20 @@ public class DiscordNotifier implements Notifier {
   private final HttpClient httpClient;
   private final URI url;
   private final ObjectMapper objectMapper;
-  private final Optional<String> mentionUserId;
+  private final Optional<String> mention;
   private final Optional<String> mentionText;
   private final Optional<String> hostname;
 
   public DiscordNotifier(
     HttpClient httpClient,
     URI url,
-    Optional<String> mentionUserId,
+    Optional<String> mention,
     Optional<String> mentionText,
     Optional<String> hostname
   ) {
     this.httpClient = httpClient;
     this.url = url;
-    this.mentionUserId = mentionUserId;
+    this.mention = mention;
     this.mentionText = mentionText;
     this.hostname = hostname;
     this.objectMapper = new ObjectMapper();
@@ -92,9 +92,9 @@ public class DiscordNotifier implements Notifier {
         "avatar_url",
         new TextNode("https://github.com/I-Al-Istannen/Lighthouse/blob/master/media/lighthouse.png?raw=true")
       );
-      mentionUserId.ifPresent(id -> payload.set(
+      mention.ifPresent(mention -> payload.set(
         "content",
-        new TextNode("Hey, <@" + id + "> " + mentionText.orElse("I got some news!"))
+        new TextNode("Hey, " + mention + " " + mentionText.orElse("I got some news!"))
       ));
       payload.set("username", new TextNode("Lighthouse" + hostname.map(it -> " (" + it + ")").orElse("")));
 

@@ -69,7 +69,7 @@ public class Main {
     DiscordNotifier notifier = new DiscordNotifier(
       httpClient,
       new URI(arguments.webhookUrl()),
-      arguments.mentionUserId(),
+      arguments.mention(),
       arguments.mentionText(),
       arguments.hostname()
     );
