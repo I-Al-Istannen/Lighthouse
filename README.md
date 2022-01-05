@@ -36,8 +36,12 @@ special label.
 
 If you do not want to check all containers for updates, you can set
 *Lighthouse* to opt-in mode using the `--require-label` flag. If it is set,
-*Lighthouse* will only consider containers with the `lighthouse.enable=true`
+*Lighthouse* will only consider containers with the `lighthouse.enabled=true`
 label.
+
+The `lighthouse.enabled` flag is *absolute* and not influenced by
+`--require-label`. If you set it to `false`, the container will *never* be
+checked. If you set it to `true`, the container will *always* be checked.
 
 To save you from many duplicate notifications, *Lighthouse* keeps an internal
 database of all images it *successfully* notified you about. Unless you pass
@@ -72,7 +76,7 @@ OPTIONS
   --mention-text TEXT    Text to send in Discord
   --docker-config PATH   Path to docker config. Default: /root/.docker/config.json
   --hostname NAME        The hostname to mention in notifications
-  --require-label        Ignore containers without 'lighthouse.enable' label.
+  --require-label        Ignore containers without 'lighthouse.enabled' label.
                          Default: false
   --notify-again         Notify you more than once about an image update.
                          Default: false

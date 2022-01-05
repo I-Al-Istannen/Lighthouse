@@ -33,7 +33,7 @@ public interface CliArguments {
 
   @Option(
     names = "--require-label",
-    description = "Ignore containers without 'lighthouse.enable' label. Default: false"
+    description = "Ignore containers without 'lighthouse.enabled' label. Default: false"
   )
   boolean requireLabel();
 
