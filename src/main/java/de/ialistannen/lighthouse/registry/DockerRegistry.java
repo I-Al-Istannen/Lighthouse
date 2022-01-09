@@ -1,5 +1,6 @@
 package de.ialistannen.lighthouse.registry;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import de.ialistannen.lighthouse.auth.DockerRegistryAuth;
@@ -161,8 +162,24 @@ public class DockerRegistry {
     HttpRequest request = HttpRequest.newBuilder(authUrl)
       .GET()
       .build();
-    String body = client.send(request, BodyHandlers.ofString()).body();
-    String token = objectMapper.readValue(body, ObjectNode.class).get("token").asText();
+    HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
+    if (response.statusCode() != 200) {
+      LOGGER.error(
+        "Unsuccessful request to registry at {} with status {}. Body: {}, header: {}",
+        authUrl, response.statusCode(), response.body(), response.headers().map()
+      );
+      throw new TokenFetchException("Could not fetch token as response returned status " + response.statusCode());
+    }
+    String body = response.body();
+    JsonNode tokenNode = objectMapper.readValue(body, ObjectNode.class).get("token");
+    if (tokenNode == null) {
+      LOGGER.error(
+        "Weird response to registry auth request at {} with status {}. Body: {}, header: {}",
+        authUrl, response.statusCode(), body, response.headers().map()
+      );
+      throw new TokenFetchException("Could not fetch token as response does not contain a valid token");
+    }
+    String token = tokenNode.asText();
 
     LOGGER.debug("Received json response: '{}'", body);
 
