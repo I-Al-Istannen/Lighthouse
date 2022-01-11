@@ -1,5 +1,6 @@
 package de.ialistannen.lighthouse.cli;
 
+import de.ialistannen.lighthouse.model.BaseImageUpdateStrategy;
 import java.util.Optional;
 import net.jbock.Command;
 import net.jbock.Option;
@@ -30,6 +31,13 @@ public interface CliArguments {
 
   @Option(names = "--hostname", description = "The hostname to mention in notifications", paramLabel = "NAME")
   Optional<String> hostname();
+
+  @Option(
+    names = "--base-image-update",
+    description = "Whether to 'only_pull_unknown' base images or 'pull_and_update' them",
+    paramLabel = "STRATEGY"
+  )
+  Optional<BaseImageUpdateStrategy> baseImageUpdate();
 
   @Option(
     names = "--require-label",

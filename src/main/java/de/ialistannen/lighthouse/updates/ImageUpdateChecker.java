@@ -9,6 +9,7 @@ import com.github.dockerjava.api.command.InspectImageResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.model.Container;
 import de.ialistannen.lighthouse.metadata.MetadataFetcher;
+import de.ialistannen.lighthouse.model.BaseImageUpdateStrategy;
 import de.ialistannen.lighthouse.model.EnrollmentMode;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
 import de.ialistannen.lighthouse.registry.DigestFetchException;
@@ -43,19 +44,22 @@ public class ImageUpdateChecker {
   private final MetadataFetcher metadataFetcher;
   private final EnrollmentMode enrollmentMode;
   private final DockerLibraryHelper libraryHelper;
+  private final BaseImageUpdateStrategy baseImageUpdateStrategy;
 
   public ImageUpdateChecker(
     DockerClient client,
     DockerRegistry dockerRegistry,
     MetadataFetcher metadataFetcher,
     EnrollmentMode enrollmentMode,
-    DockerLibraryHelper libraryHelper
+    DockerLibraryHelper libraryHelper,
+    BaseImageUpdateStrategy baseImageUpdateStrategy
   ) {
     this.client = client;
     this.dockerRegistry = dockerRegistry;
     this.metadataFetcher = metadataFetcher;
     this.enrollmentMode = enrollmentMode;
     this.libraryHelper = libraryHelper;
+    this.baseImageUpdateStrategy = baseImageUpdateStrategy;
   }
 
   /**
@@ -102,7 +106,20 @@ public class ImageUpdateChecker {
     pullUnknownBaseImages(participatingContainers);
 
     for (ContainerWithRemoteInfo info : getContainersWithRemoteInfo(participatingContainers)) {
-      info = updateBaseImageIfNeeded(info);
+      if (baseImageUpdateStrategy.updateOutdated()) {
+        info = updateBaseImageIfNeeded(info);
+      }
+
+      if (info.baseImageOutdated()) {
+        LOGGER.info(
+          "Container '{}' has out of date base image '{}' and updating was forbidden. Treating as outdated",
+          info.container().container().getNames(),
+          info.container().baseRepoTag()
+        );
+
+        updates.add(info.toUpdate(metadataFetcher));
+        continue;
+      }
 
       if (isContainerUpToDate(info)) {
         continue;

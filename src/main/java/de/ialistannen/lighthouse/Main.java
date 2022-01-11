@@ -11,6 +11,7 @@ import de.ialistannen.lighthouse.auth.DockerRegistryAuth;
 import de.ialistannen.lighthouse.cli.CliArguments;
 import de.ialistannen.lighthouse.cli.CliArgumentsParser;
 import de.ialistannen.lighthouse.metadata.DockerHubMetadataFetcher;
+import de.ialistannen.lighthouse.model.BaseImageUpdateStrategy;
 import de.ialistannen.lighthouse.model.EnrollmentMode;
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.notifier.DiscordNotifier;
@@ -58,7 +59,8 @@ public class Main {
       dockerRegistry,
       metadataFetcher,
       enrollmentMode,
-      libraryHelper
+      libraryHelper,
+      arguments.baseImageUpdate().orElse(BaseImageUpdateStrategy.ONLY_PULL_UNKNOWN)
     );
     ContainerUpdateChecker containerUpdateChecker = new ContainerUpdateChecker(
       dockerClient,
