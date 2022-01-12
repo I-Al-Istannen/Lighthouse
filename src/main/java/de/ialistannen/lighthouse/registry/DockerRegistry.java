@@ -12,7 +12,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -61,24 +60,26 @@ public class DockerRegistry {
   private String getAuthHeader(String image) throws URISyntaxException, IOException, InterruptedException {
     String registryUrl = getRegistryUrl(image);
 
-    // TODO: Do we need to send this at all here? Or just return the stored auth and be done with it?
-    List<String> headers = new ArrayList<>(List.of("User-Agent", "Lighthouse"));
-    getAuthForRegistry(registryUrl).ifPresent(auth -> {
-      headers.add("Authorization");
-      headers.add("Basic " + auth);
-    });
     HttpRequest challengeRequest = HttpRequest.newBuilder(getChallengeUrl(image))
-      .headers(headers.toArray(String[]::new))
+      .headers("User-Agent", "Lighthouse")
       .GET()
       .build();
 
+    LOGGER.debug(
+      "Sending request to {}, ({}) headers: {}",
+      challengeRequest.uri(),
+      challengeRequest.method(),
+      challengeRequest.headers()
+    );
     HttpResponse<Void> challengeResponse = client.send(challengeRequest, BodyHandlers.discarding());
 
-    // basic auth succeeded
-    if (challengeResponse.statusCode() == 200 || challengeResponse.statusCode() == 204) {
-      return "Basic " + getAuthForRegistry(registryUrl)
-        .orElseThrow(() -> new TokenFetchException("Thought I had auth but I don't?"));
-    }
+    LOGGER.debug(
+      "Got response {}-{}: {}, {}",
+      challengeResponse.uri(),
+      challengeResponse.statusCode(),
+      challengeResponse.headers(),
+      challengeResponse.body()
+    );
 
     String header = challengeResponse.headers()
       .firstValue("www-authenticate")
@@ -101,7 +102,7 @@ public class DockerRegistry {
     URI authUrl = new URI(realm + "?service=" + service + "&scope=" + scope);
     LOGGER.debug("Build auth URL '{}' for '{}'", authUrl, image);
 
-    return getBearerHeader(authUrl);
+    return getBearerHeader(authUrl, registryUrl);
   }
 
   private Optional<String> getAuthForRegistry(String registryUrl) throws URISyntaxException {
@@ -158,10 +159,13 @@ public class DockerRegistry {
     return response.headers().firstValue("docker-content-digest").orElseThrow();
   }
 
-  private String getBearerHeader(URI authUrl) throws IOException, InterruptedException {
-    HttpRequest request = HttpRequest.newBuilder(authUrl)
-      .GET()
-      .build();
+  private String getBearerHeader(URI authUrl, String registryUrl)
+    throws IOException, InterruptedException, URISyntaxException {
+
+    var requestBuilder = HttpRequest.newBuilder(authUrl).GET();
+    getAuthForRegistry(registryUrl).ifPresent(auth -> requestBuilder.header("Authorization", "Basic " + auth));
+
+    HttpRequest request = requestBuilder.build();
     HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
     if (response.statusCode() != 200) {
       LOGGER.error(

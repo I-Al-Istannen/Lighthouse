@@ -25,9 +25,11 @@ image you provided as a label. It verifies the base image is up to date using
 the docker registry and then *also verifies*, that your container image is
 actually based on the most up-to-date version of the base image.
 
-If *Lighthouse* detects that the local reference base image is outdated, it will
-automatically update it to ensure all checks work correctly. If the container
-is based on an outdated image, it will notify you in discord.
+If *Lighthouse* detects that the local reference base image is outdated, it
+will update the base image if you pass `----base-image-update pull_and_update`.
+Otherwise it will always tell you that the container is outdated if your base
+image is. If the container is based on an outdated image, it will notify you in
+discord.
 
 If *Lighthouse* finds a container without a `lighthouse.base` label, it will try
 to find updates for the container's image instead. This ensures containers
@@ -70,17 +72,21 @@ PARAMETERS
   URL  Discord webhook URL
 
 OPTIONS
-  --check-times CRONTAB  Check times in cron syntax (https://crontab.guru).
-                         Default: '23 08 * * *'
-  --mention MENTION      Discord mention (e.g. '<@userid>')
-  --mention-text TEXT    Text to send in Discord
-  --docker-config PATH   Path to docker config. Default: /root/.docker/config.json
-  --hostname NAME        The hostname to mention in notifications
-  --require-label        Ignore containers without 'lighthouse.enabled' label.
-                         Default: false
-  --notify-again         Notify you more than once about an image update.
-                         Default: false
+  --check-times CRONTAB         Check times in cron syntax (https://crontab.guru).
+                                Default: '23 08 * * *'
+  --mention MENTION             Discord mention (e.g. '<@userid>')
+  --mention-text TEXT           Text to send in Discord
+  --docker-config PATH          Path to docker config. Default: /root/.docker/config.json
+  --hostname NAME               The hostname to mention in notifications
+  --base-image-update STRATEGY  Whether to 'only_pull_unknown' base images or
+                                'pull_and_update' them
+  --require-label               Ignore containers without 'lighthouse.enabled' label.
+                                Default: false
+  --notify-again                Notify you more than once about an image update.
+                                Default: false
 ```
+
+You can set the `LOG_LEVEL` environment variable to `DEBUG` to enable debug logging.
 
 
 ### Example
