@@ -86,6 +86,9 @@ OPTIONS
                                 Default: false
 ```
 
+The mention text can include the placeholder `{IMAGES}` which will be replaced
+with a space-separated list of the images having updates available.
+
 You can set the `LOG_LEVEL` environment variable to `DEBUG` to enable debug logging.
 
 

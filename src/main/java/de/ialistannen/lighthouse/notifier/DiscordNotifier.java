@@ -20,6 +20,7 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +71,7 @@ public class DiscordNotifier implements Notifier {
     embeds.add(embed);
     payload.set("embeds", embeds);
 
-    sendPayload(payload);
+    sendPayload(payload, List.of());
   }
 
   @Override
@@ -82,11 +83,11 @@ public class DiscordNotifier implements Notifier {
 
     for (List<LighthouseContainerUpdate> batch : Lists.partition(updates, 10)) {
       ObjectNode payload = buildPayload(batch);
-      sendPayload(payload);
+      sendPayload(payload, batch);
     }
   }
 
-  private void sendPayload(ObjectNode payload) {
+  private void sendPayload(ObjectNode payload, List<LighthouseContainerUpdate> updates) {
     try {
       payload.set(
         "avatar_url",
@@ -94,7 +95,7 @@ public class DiscordNotifier implements Notifier {
       );
       mention.ifPresent(mention -> payload.set(
         "content",
-        new TextNode("Hey, " + mention + " " + mentionText.orElse("I got some news!"))
+        new TextNode("Hey, " + mention + " " + getExpandedMentionText(updates))
       ));
       payload.set("username", new TextNode("Lighthouse" + hostname.map(it -> " (" + it + ")").orElse("")));
 
@@ -110,6 +111,17 @@ public class DiscordNotifier implements Notifier {
     } catch (IOException | InterruptedException e) {
       LOGGER.warn("Failed to notify!", e);
     }
+  }
+
+  private String getExpandedMentionText(List<LighthouseContainerUpdate> updates) {
+    String text = mentionText.orElse("I got some news!");
+
+    String images = updates.stream()
+      .map(LighthouseContainerUpdate::imageUpdate)
+      .map(imageUpdate -> imageUpdate.imageName() + ":" + imageUpdate.tag())
+      .collect(Collectors.joining(" "));
+
+    return text.replace("{IMAGES}", images);
   }
 
   private ObjectNode buildPayload(List<LighthouseContainerUpdate> updates) {
