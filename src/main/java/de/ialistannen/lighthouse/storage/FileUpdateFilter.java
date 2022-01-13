@@ -51,22 +51,28 @@ public class FileUpdateFilter implements UpdateFilter {
 
       List<LighthouseContainerUpdate> filtered = updates.stream()
         .filter(it -> {
-          boolean keep = !currentDatabase.knownUpdates().containsKey(it.imageUpdate().sourceImageId());
-          if (!keep) {
+          // Use the remote manifest as key: We want to notify if there is yet another update for our local image!
+          boolean known = currentDatabase.knownUpdates().containsKey(it.imageUpdate().remoteManifestDigest());
+          if (known) {
             LOGGER.info(
               "Skipping notify for {} - {}",
               it.imageUpdate().sourceImageNames(),
               it.imageUpdate().sourceImageId()
             );
+            return false;
           }
-          return keep;
+          return true;
         })
         .toList();
 
       Map<String, KnownUpdate> newKnownUpdates = new HashMap<>(currentDatabase.knownUpdates());
       for (LighthouseContainerUpdate update : filtered) {
-        String imageId = update.imageUpdate().sourceImageId();
-        newKnownUpdates.put(imageId, new KnownUpdate(imageId, update.imageUpdate().sourceImageNames(), update.names()));
+        String remoteManifest = update.imageUpdate().remoteManifestDigest();
+        String localImageId = update.imageUpdate().sourceImageId();
+        newKnownUpdates.put(
+          remoteManifest,
+          new KnownUpdate(remoteManifest, localImageId, update.imageUpdate().sourceImageNames(), update.names())
+        );
       }
       currentDatabase = new UpdateDatabase(newKnownUpdates);
 
@@ -88,7 +94,12 @@ public class FileUpdateFilter implements UpdateFilter {
 
   @JsonSerialize
   @JsonDeserialize
-  record KnownUpdate(String imageId, List<String> repoTags, List<String> originalContainers) {
+  record KnownUpdate(
+    String remoteManifest,
+    String localImageId,
+    List<String> repoTags,
+    List<String> originalContainers
+  ) {
 
   }
 
