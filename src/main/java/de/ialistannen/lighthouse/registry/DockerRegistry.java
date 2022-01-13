@@ -106,12 +106,23 @@ public class DockerRegistry {
   }
 
   private Optional<String> getAuthForRegistry(String registryUrl) throws URISyntaxException {
-    String host = new URI(registryUrl).getHost();
+    String registryHost = new URI(registryUrl).getHost();
 
     return registryAuths.stream()
-      .filter(it -> it.host().equals(host))
+      .filter(authSection -> hostMatches(authSection.url(), registryHost))
       .findFirst()
       .map(DockerRegistryAuth::encodedAuth);
+  }
+
+  private boolean hostMatches(String fullUrl, String expectedHost) {
+    if (fullUrl.equalsIgnoreCase(expectedHost)) {
+      return true;
+    }
+    try {
+      return expectedHost.equalsIgnoreCase(new URI(fullUrl).getHost());
+    } catch (URISyntaxException e) {
+      return false;
+    }
   }
 
   /**

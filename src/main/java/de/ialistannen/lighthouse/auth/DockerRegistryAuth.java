@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 
-public record DockerRegistryAuth(String host, String encodedAuth) {
+public record DockerRegistryAuth(String url, String encodedAuth) {
 
   /**
    * Loads the docker authentications from a given config file.
