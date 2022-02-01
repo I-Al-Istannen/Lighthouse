@@ -46,6 +46,7 @@ public class CronRunner {
 
         action.run();
       } catch (Exception e) {
+        LOGGER.warn("Error during iteration", e);
         notifier.notify(e);
       }
     }

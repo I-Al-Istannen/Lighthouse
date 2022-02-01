@@ -58,6 +58,10 @@ public class DiscordNotifier implements Notifier {
     LOGGER.info("Notifying for exception in discord");
 
     String stacktrace = Throwables.getStackTraceAsString(e);
+    // Discord has a 4096 char limit for embed descriptions
+    if (stacktrace.length() > 4000) {
+      stacktrace = stacktrace.substring(0, 4000);
+    }
 
     ObjectNode payload = objectMapper.createObjectNode();
 
