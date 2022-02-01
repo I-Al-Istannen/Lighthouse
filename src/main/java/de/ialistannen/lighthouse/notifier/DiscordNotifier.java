@@ -104,6 +104,8 @@ public class DiscordNotifier implements Notifier {
         .header("Content-Type", "application/json")
         .build();
 
+      LOGGER.debug("Sending webhook {}", objectMapper.writeValueAsString(payload));
+
       HttpResponse<String> response = httpClient.send(request, BodyHandlers.ofString());
       if (response.statusCode() != 200 && response.statusCode() != 204) {
         LOGGER.warn("Failed to notify (HTTP {}): {}", response.statusCode(), response.body());
