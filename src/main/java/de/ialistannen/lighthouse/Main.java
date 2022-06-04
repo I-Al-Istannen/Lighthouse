@@ -14,11 +14,16 @@ import de.ialistannen.lighthouse.metadata.DockerHubMetadataFetcher;
 import de.ialistannen.lighthouse.model.BaseImageUpdateStrategy;
 import de.ialistannen.lighthouse.model.EnrollmentMode;
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
-import de.ialistannen.lighthouse.notifier.DiscordNotifier;
+import de.ialistannen.lighthouse.notifier.DiscordBotNotifier;
+import de.ialistannen.lighthouse.notifier.DiscordWebhookNotifier;
+import de.ialistannen.lighthouse.notifier.Notifier;
 import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
 import de.ialistannen.lighthouse.registry.DockerRegistry;
 import de.ialistannen.lighthouse.storage.FileUpdateFilter;
 import de.ialistannen.lighthouse.timing.CronRunner;
+import de.ialistannen.lighthouse.updater.DiscordBotUpdateListener;
+import de.ialistannen.lighthouse.updater.DockerUpdater;
+import de.ialistannen.lighthouse.updater.UpdateListener;
 import de.ialistannen.lighthouse.updates.ContainerUpdateChecker;
 import de.ialistannen.lighthouse.updates.ImageUpdateChecker;
 import java.io.IOException;
@@ -29,6 +34,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import javax.annotation.Nullable;
+import javax.security.auth.login.LoginException;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.TextChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,13 +78,9 @@ public class Main {
       enrollmentMode
     );
 
-    DiscordNotifier notifier = new DiscordNotifier(
-      httpClient,
-      new URI(arguments.webhookUrl()),
-      arguments.mention(),
-      arguments.mentionText(),
-      arguments.hostname()
-    );
+    JDA jda = buildJda(arguments);
+    Notifier notifier = buildNotifier(arguments, httpClient, jda);
+    UpdateListener updateListener = buildUpdateListener(arguments, notifier, dockerClient, jda);
 
     FileUpdateFilter updateFilter = new FileUpdateFilter(Path.of("data/known-images.json"));
 
@@ -90,11 +96,100 @@ public class Main {
         }
 
         notifier.notify(updates);
+        updateListener.onUpdatesFound(updates);
 
         // AFTER notify was successful!
         updateFilter.commit();
       }
     ).runUntilSingularity();
+  }
+
+  private static JDA buildJda(CliArguments arguments) {
+    if (arguments.useWebhookNotifier()) {
+      return null;
+    }
+    try {
+      return JDABuilder.createDefault(arguments.webhookUrlOrToken()).build().awaitReady();
+    } catch (InterruptedException | LoginException e) {
+      LOGGER.error("Error logging in to discord", e);
+      throw die("Error logging in to discord");
+    }
+  }
+
+  private static Notifier buildNotifier(
+    CliArguments arguments,
+    HttpClient httpClient,
+    @Nullable JDA jda
+  ) throws URISyntaxException {
+
+    if (arguments.useWebhookNotifier()) {
+      return new DiscordWebhookNotifier(
+        httpClient,
+        new URI(arguments.webhookUrlOrToken()),
+        arguments.mention(),
+        arguments.mentionText(),
+        arguments.hostname()
+      );
+    }
+
+    if (jda == null) {
+      throw die("JDA was null");
+    }
+
+    if (arguments.botChannelId().isEmpty()) {
+      throw die("Channel id must be supplied when using the bot notifier");
+    }
+
+    TextChannel channel = jda.getTextChannelById(arguments.botChannelId().get());
+
+    if (channel == null) {
+      throw die("Textchannel does not exist");
+    }
+
+    try {
+      return new DiscordBotNotifier(
+        channel,
+        arguments.mention(),
+        arguments.mentionText(),
+        arguments.hostname()
+      );
+    } catch (LoginException e) {
+      LOGGER.error("Failed to login", e);
+      throw die("Failed to login");
+    }
+  }
+
+  private static UpdateListener buildUpdateListener(
+    CliArguments arguments, Notifier notifier, DockerClient client, JDA jda
+  ) {
+    if (arguments.useWebhookNotifier()) {
+      return ignored -> {
+      };
+    }
+    DiscordBotUpdateListener listener = new DiscordBotUpdateListener(
+      buildUpdater(arguments, client),
+      notifier
+    );
+    jda.addEventListener(listener);
+    return listener;
+  }
+
+  private static DockerUpdater buildUpdater(CliArguments arguments, DockerClient client) {
+    if (arguments.updaterEntrypoint().isEmpty()) {
+      throw die("Entrypoint must be given when using the updater");
+    }
+
+    String entrypoint = arguments.updaterEntrypoint().get();
+    String updaterImage = arguments.updaterDockerImage().orElse("docker");
+
+    return new DockerUpdater(client, arguments.updaterMounts(), entrypoint, updaterImage);
+  }
+
+  private static RuntimeException die(String msg) {
+    LOGGER.error(msg);
+    System.exit(1);
+
+    return new RuntimeException();
   }
 
   private static List<DockerRegistryAuth> authsFromArgs(CliArguments arguments) throws IOException {

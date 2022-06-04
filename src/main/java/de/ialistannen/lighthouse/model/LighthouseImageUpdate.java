@@ -23,4 +23,7 @@ public record LighthouseImageUpdate(
   Optional<RemoteImageMetadata> remoteImageMetadata
 ) {
 
+  public String getNameWithTag() {
+    return imageName() + ":" + tag();
+  }
 }

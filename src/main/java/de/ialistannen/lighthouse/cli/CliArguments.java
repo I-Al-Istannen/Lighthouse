@@ -1,6 +1,8 @@
 package de.ialistannen.lighthouse.cli;
 
 import de.ialistannen.lighthouse.model.BaseImageUpdateStrategy;
+import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import net.jbock.Command;
 import net.jbock.Option;
@@ -48,7 +50,26 @@ public interface CliArguments {
   @Option(names = "--notify-again", description = "Notify you more than once about an image update. Default: false")
   boolean alwaysNotify();
 
-  @Parameter(index = 0, description = "Discord webhook URL", paramLabel = "URL")
-  String webhookUrl();
+  @Option(
+    names = "--bot-updater-docker-image",
+    description = "The name of the image to use for updating containers. Default: 'library/docker'",
+    paramLabel = "IMAGE"
+  )
+  Optional<String> updaterDockerImage();
 
+  @Option(names = "--bot-updater-mount", description = "The mounts for created updater containers")
+  List<String> updaterMounts();
+
+  @Option(names = "--bot-updater-entrypoint", description = "The binary to call in the updater container")
+  Optional<String> updaterEntrypoint();
+
+  @Option(names = "--bot-channel-id", description = "The channel id the bot should send updates to")
+  Optional<String> botChannelId();
+
+  @Parameter(index = 0, description = "Discord webhook URL or discord bot token", paramLabel = "URL|TOKEN")
+  String webhookUrlOrToken();
+
+  default boolean useWebhookNotifier() {
+    return webhookUrlOrToken().toLowerCase(Locale.ROOT).startsWith("https://discord.com/api/webhooks");
+  }
 }

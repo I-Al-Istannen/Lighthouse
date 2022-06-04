@@ -20,16 +20,15 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Triggers a discord webhook with notifications :^)
  */
-public class DiscordNotifier implements Notifier {
+public class DiscordWebhookNotifier implements Notifier {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DiscordNotifier.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DiscordWebhookNotifier.class);
 
   private final HttpClient httpClient;
   private final URI url;
@@ -38,7 +37,7 @@ public class DiscordNotifier implements Notifier {
   private final Optional<String> mentionText;
   private final Optional<String> hostname;
 
-  public DiscordNotifier(
+  public DiscordWebhookNotifier(
     HttpClient httpClient,
     URI url,
     Optional<String> mention,
@@ -99,7 +98,7 @@ public class DiscordNotifier implements Notifier {
       );
       mention.ifPresent(mention -> payload.set(
         "content",
-        new TextNode("Hey, " + mention + " " + getExpandedMentionText(updates))
+        new TextNode(DiscordNotifierHelper.getExpandedMentionText(mention, mentionText, updates))
       ));
       payload.set("username", new TextNode("Lighthouse" + hostname.map(it -> " (" + it + ")").orElse("")));
 
@@ -117,17 +116,6 @@ public class DiscordNotifier implements Notifier {
     } catch (IOException | InterruptedException e) {
       LOGGER.warn("Failed to notify!", e);
     }
-  }
-
-  private String getExpandedMentionText(List<LighthouseContainerUpdate> updates) {
-    String text = mentionText.orElse("I got some news!");
-
-    String images = updates.stream()
-      .map(LighthouseContainerUpdate::imageUpdate)
-      .map(imageUpdate -> imageUpdate.imageName() + ":" + imageUpdate.tag())
-      .collect(Collectors.joining(" "));
-
-    return text.replace("{IMAGES}", images);
   }
 
   private ObjectNode buildPayload(List<LighthouseContainerUpdate> updates) {
@@ -150,7 +138,7 @@ public class DiscordNotifier implements Notifier {
     LighthouseImageUpdate imageUpdate = update.imageUpdate();
 
     ObjectNode embed = objectMapper.createObjectNode();
-    embed.set("title", new TextNode(imageUpdate.imageName() + ":" + imageUpdate.tag()));
+    embed.set("title", new TextNode(imageUpdate.getNameWithTag()));
     embed.set("description", new TextNode("Update found."));
     embed.set(
       "url",
