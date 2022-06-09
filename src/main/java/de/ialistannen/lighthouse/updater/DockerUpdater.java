@@ -1,20 +1,25 @@
 package de.ialistannen.lighthouse.updater;
 
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.async.ResultCallback.Adapter;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.PullImageResultCallback;
 import com.github.dockerjava.api.command.WaitContainerResultCallback;
 import com.github.dockerjava.api.exception.DockerClientException;
 import com.github.dockerjava.api.model.Bind;
+import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.Volume;
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -40,6 +45,14 @@ public class DockerUpdater {
     this.updaterMounts = mountsToBinds(updaterMounts);
     this.updaterEntrypoint = updaterEntrypoint;
     this.updaterDockerImage = updaterDockerImage;
+
+    // Clean up potentially leftover containers
+    client.listContainersCmd()
+      .withStatusFilter(Set.of("exited", "created"))
+      .withShowAll(true)
+      .withLabelFilter(Set.of("lighthouse-builder-container"))
+      .exec()
+      .forEach(container -> client.removeContainerCmd(container.getId()).exec());
   }
 
   public void updateBaseImage(LighthouseImageUpdate update) throws InterruptedException {
@@ -68,32 +81,49 @@ public class DockerUpdater {
     command.add(0, updaterEntrypoint);
 
     CreateContainerResponse containerResponse = client.createContainerCmd(updaterDockerImage)
-      .withHostConfig(
-        HostConfig.newHostConfig().withBinds(updaterMounts)
-      )
+      .withLabels(Map.of("lighthouse-builder-container", "true"))
+      .withHostConfig(HostConfig.newHostConfig().withBinds(updaterMounts).withAutoRemove(true))
       .withCmd(command)
       .exec();
     LOGGER.info("Started updater has ID {}", containerResponse.getId());
 
-    client.startContainerCmd(containerResponse.getId())
-      .exec();
-
-    WaitContainerResultCallback result = client.waitContainerCmd(containerResponse.getId())
-      .exec(new WaitContainerResultCallback());
-
-    Instant end = Instant.now().plus(10, ChronoUnit.MINUTES);
-    while (Instant.now().isBefore(end)) {
-      try {
-        int statusCode = result.awaitStatusCode(5, TimeUnit.MINUTES);
-
-        if (statusCode != 0) {
-          LOGGER.warn("Rebuild failed with exit code {}", statusCode);
+    Adapter<Frame> attached = client.attachContainerCmd(containerResponse.getId())
+      .withFollowStream(true)
+      .withLogs(true)
+      .withStdOut(true)
+      .withStdErr(true)
+      .exec(new Adapter<>() {
+        @Override
+        public void onNext(Frame object) {
+          LOGGER.info("[updater] {}", new String(object.getPayload(), StandardCharsets.UTF_8));
         }
+      });
 
-        client.removeContainerCmd(containerResponse.getId()).exec();
-        break;
-      } catch (DockerClientException ignored) {
+    client.startContainerCmd(containerResponse.getId()).exec();
+    WaitContainerResultCallback waitCallback = client.waitContainerCmd(containerResponse.getId()).start();
+
+    try {
+      Instant end = Instant.now().plus(10, ChronoUnit.MINUTES);
+      while (Instant.now().isBefore(end)) {
+        try {
+          int statusCode = waitCallback.awaitStatusCode(5, TimeUnit.MINUTES);
+
+          if (statusCode != 0) {
+            LOGGER.warn("Rebuild failed with exit code {}", statusCode);
+          } else {
+            LOGGER.info("Rebuild successful");
+          }
+          break;
+        } catch (DockerClientException e) {
+          if (!e.getMessage().contains("interrupted")) {
+            LOGGER.info("Wait operation failed, updater status unknown", e);
+            break;
+          }
+        }
       }
+      attached.close();
+    } catch (IOException e) {
+      LOGGER.error("Failed to stop attached listener", e);
     }
   }
 
