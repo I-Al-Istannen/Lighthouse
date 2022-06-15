@@ -12,5 +12,5 @@ public interface Notifier {
    *
    * @param e the error
    */
-  void notify(Exception e);
+  void notify(Throwable e);
 }

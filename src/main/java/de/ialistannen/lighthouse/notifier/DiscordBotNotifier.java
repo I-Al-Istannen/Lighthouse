@@ -50,7 +50,7 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
   }
 
   @Override
-  public void notify(Exception e) {
+  public void notify(Throwable e) {
     LOGGER.info("Notifying for exception in discord");
 
     String stacktrace = Throwables.getStackTraceAsString(e);
