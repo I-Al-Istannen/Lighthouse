@@ -4,6 +4,7 @@ import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.notifier.Notifier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import net.dv8tion.jda.api.entities.Emoji;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -44,20 +45,26 @@ public class DiscordBotUpdateListener extends ListenerAdapter implements UpdateL
       event.getButton().asDisabled().withLabel("Executing...")
     )).complete();
 
-    try {
-      updater.rebuildContainers(lastUpdates);
+    CompletableFuture.runAsync(() -> {
+        try {
+          updater.rebuildContainers(lastUpdates);
+          hook.editOriginalComponents(ActionRow.of(
+            event.getButton().asDisabled()
+              .withLabel("Updated!")
+              .withEmoji(Emoji.fromUnicode("\u2705"))
+              .withStyle(ButtonStyle.SUCCESS)
+          )).queue();
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      })
+      .exceptionally(throwable -> {
+        LOGGER.warn("Error while updating all", throwable);
+        notifier.notify(throwable);
+        // Restore button
+        hook.editOriginalComponents(ActionRow.of(event.getButton())).queue();
 
-      hook.editOriginalComponents(ActionRow.of(
-        event.getButton().asDisabled()
-          .withLabel("Updated!")
-          .withEmoji(Emoji.fromUnicode("\u2705"))
-          .withStyle(ButtonStyle.SUCCESS)
-      )).queue();
-    } catch (Exception e) {
-      LOGGER.warn("Error while updating all", e);
-      notifier.notify(e);
-      // Restore button
-      hook.editOriginalComponents(ActionRow.of(event.getButton())).queue();
-    }
+        return null;
+      });
   }
 }

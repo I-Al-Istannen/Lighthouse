@@ -14,8 +14,6 @@ import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -102,28 +100,16 @@ public class DockerUpdater {
     client.startContainerCmd(containerResponse.getId()).exec();
     WaitContainerResultCallback waitCallback = client.waitContainerCmd(containerResponse.getId()).start();
 
-    try {
-      Instant end = Instant.now().plus(10, ChronoUnit.MINUTES);
-      while (Instant.now().isBefore(end)) {
-        try {
-          int statusCode = waitCallback.awaitStatusCode(5, TimeUnit.MINUTES);
+    try (attached) {
+      int statusCode = waitCallback.awaitStatusCode();
 
-          if (statusCode != 0) {
-            LOGGER.warn("Rebuild failed with exit code {}", statusCode);
-          } else {
-            LOGGER.info("Rebuild successful");
-          }
-          break;
-        } catch (DockerClientException e) {
-          if (!e.getMessage().contains("interrupted")) {
-            LOGGER.info("Wait operation failed, updater status unknown", e);
-            break;
-          }
-        }
+      if (statusCode != 0) {
+        LOGGER.warn("Rebuild failed with exit code {}", statusCode);
+      } else {
+        LOGGER.info("Rebuild successful");
       }
-      attached.close();
-    } catch (IOException e) {
-      LOGGER.error("Failed to stop attached listener", e);
+    } catch (DockerClientException | IOException e) {
+      LOGGER.info("Wait operation failed, updater status unknown", e);
     }
   }
 
