@@ -1,6 +1,7 @@
 package de.ialistannen.lighthouse.updates;
 
 import com.github.dockerjava.api.model.Container;
+import de.ialistannen.lighthouse.model.ImageIdentifier;
 
 public class ContainerWithBaseUtils {
 
@@ -10,19 +11,8 @@ public class ContainerWithBaseUtils {
     return container.getLabels().containsKey(BASE_IMAGE_LABEL);
   }
 
-  public static String getBaseImage(Container container) {
-    return container.getLabels().get(BASE_IMAGE_LABEL).split(":")[0];
+  public static ImageIdentifier getBaseImageIdentifier(Container container) {
+    return ImageIdentifier.fromString(container.getLabels().get(BASE_IMAGE_LABEL));
   }
 
-  public static String getBaseTag(Container container) {
-    String[] parts = container.getLabels().get(BASE_IMAGE_LABEL).split(":");
-    if (parts.length == 1) {
-      return "latest";
-    }
-    return parts[1];
-  }
-
-  public static String getBaseRepoTag(Container container) {
-    return getBaseImage(container) + ":" + getBaseTag(container);
-  }
 }

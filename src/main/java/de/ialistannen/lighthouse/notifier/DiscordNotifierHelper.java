@@ -1,5 +1,6 @@
 package de.ialistannen.lighthouse.notifier;
 
+import de.ialistannen.lighthouse.model.ImageIdentifier;
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
 import java.util.List;
@@ -17,7 +18,8 @@ class DiscordNotifierHelper {
 
     String images = updates.stream()
       .map(LighthouseContainerUpdate::imageUpdate)
-      .map(LighthouseImageUpdate::getNameWithTag)
+      .map(LighthouseImageUpdate::imageIdentifier)
+      .map(ImageIdentifier::nameWithTag)
       .collect(Collectors.joining(" "));
 
     text = text.replace("{IMAGES}", images);

@@ -2,6 +2,7 @@ package de.ialistannen.lighthouse.metadata;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import de.ialistannen.lighthouse.model.ImageIdentifier;
 import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
 import de.ialistannen.lighthouse.registry.RemoteImageMetadata;
 import java.io.IOException;
@@ -26,16 +27,16 @@ public class DockerHubMetadataFetcher implements MetadataFetcher {
   }
 
   @Override
-  public Optional<RemoteImageMetadata> fetch(String image, String tag)
+  public Optional<RemoteImageMetadata> fetch(ImageIdentifier identifier)
     throws IOException, InterruptedException, URISyntaxException {
-    String imageName = libraryHelper.normalizeImageName(image);
+    String imageName = libraryHelper.normalizeImageName(identifier.image());
 
     if (!imageName.startsWith("docker.io") && !imageName.startsWith("index.docker.io")) {
       return Optional.empty();
     }
     imageName = libraryHelper.getImageNameWithoutRegistry(imageName);
 
-    String url = "https://hub.docker.com/v2/repositories/%s/tags/%s/".formatted(imageName, tag);
+    String url = "https://hub.docker.com/v2/repositories/%s/tags/%s/".formatted(imageName, identifier.tag());
     HttpRequest request = HttpRequest.newBuilder(new URI(url)).GET().build();
     String body = client.send(request, BodyHandlers.ofString()).body();
     ObjectNode root = objectMapper.readValue(body, ObjectNode.class);

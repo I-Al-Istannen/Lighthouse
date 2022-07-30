@@ -121,8 +121,8 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
     EmbedBuilder embedBuilder = new EmbedBuilder();
 
     embedBuilder.setTitle(
-      imageUpdate.getNameWithTag(),
-      "https://hub.docker.com/r/%s".formatted(imageUpdate.imageName())
+      imageUpdate.imageIdentifier().nameWithTag(),
+      "https://hub.docker.com/r/%s".formatted(imageUpdate.imageIdentifier().image())
     );
     embedBuilder.setDescription("Update found.");
     embedBuilder.setColor(0xFF6347);

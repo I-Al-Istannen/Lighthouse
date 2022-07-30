@@ -10,20 +10,15 @@ import java.util.Optional;
  * @param sourceImageId the image id as used by docker commands
  * @param sourceImageNames all repo tags (name:tag) this image is known as
  * @param remoteManifestDigest the digest of the remote image's manifest
- * @param imageName the friendly name of the image (as used by {@code "docker inspect image"} etc)
- * @param tag the image tag
+ * @param imageIdentifier the friendly name of the image (as used by {@code "docker inspect image"} etc) and tag
  * @param remoteImageMetadata metadata about the current remote image, if available
  */
 public record LighthouseImageUpdate(
   String sourceImageId,
   List<String> sourceImageNames,
   String remoteManifestDigest,
-  String imageName,
-  String tag,
+  ImageIdentifier imageIdentifier,
   Optional<RemoteImageMetadata> remoteImageMetadata
 ) {
 
-  public String getNameWithTag() {
-    return imageName() + ":" + tag();
-  }
 }

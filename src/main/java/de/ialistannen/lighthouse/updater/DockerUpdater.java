@@ -54,9 +54,9 @@ public class DockerUpdater {
   }
 
   public void updateBaseImage(LighthouseImageUpdate update) throws InterruptedException {
-    LOGGER.info("Updating base image {} for {}", update.getNameWithTag(), update.sourceImageNames());
-    client.pullImageCmd(update.imageName())
-      .withTag(update.tag())
+    LOGGER.info("Updating base image {} for {}", update.imageIdentifier().nameWithTag(), update.sourceImageNames());
+    client.pullImageCmd(update.imageIdentifier().image())
+      .withTag(update.imageIdentifier().tag())
       .exec(new PullImageResultCallback())
       .awaitCompletion(5, TimeUnit.MINUTES);
   }

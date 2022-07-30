@@ -1,8 +1,6 @@
 package de.ialistannen.lighthouse.updates;
 
-import static de.ialistannen.lighthouse.updates.ContainerWithBaseUtils.getBaseImage;
-import static de.ialistannen.lighthouse.updates.ContainerWithBaseUtils.getBaseRepoTag;
-import static de.ialistannen.lighthouse.updates.ContainerWithBaseUtils.getBaseTag;
+import static de.ialistannen.lighthouse.updates.ContainerWithBaseUtils.getBaseImageIdentifier;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectImageResponse;
@@ -11,6 +9,7 @@ import com.github.dockerjava.api.model.Container;
 import de.ialistannen.lighthouse.metadata.MetadataFetcher;
 import de.ialistannen.lighthouse.model.BaseImageUpdateStrategy;
 import de.ialistannen.lighthouse.model.EnrollmentMode;
+import de.ialistannen.lighthouse.model.ImageIdentifier;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
 import de.ialistannen.lighthouse.registry.DigestFetchException;
 import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
@@ -114,7 +113,7 @@ public class ImageUpdateChecker {
         LOGGER.info(
           "Container '{}' has out of date base image '{}' and updating was forbidden. Treating as outdated",
           info.container().container().getNames(),
-          info.container().baseRepoTag()
+          info.container().baseImageRepoTag()
         );
 
         updates.add(info.toUpdate(metadataFetcher));
@@ -128,7 +127,7 @@ public class ImageUpdateChecker {
       LOGGER.info(
         "Container '{}' is out of date for image '{}'",
         info.container().container().getNames(),
-        info.container().baseRepoTag()
+        info.container().baseImageRepoTag()
       );
 
       updates.add(info.toUpdate(metadataFetcher));
@@ -164,14 +163,14 @@ public class ImageUpdateChecker {
       }
 
       InspectImageResponse inspect = client
-        .inspectImageCmd(withBase.baseRepoTag())
+        .inspectImageCmd(withBase.baseImageRepoTag())
         .exec();
       if (inspect.getRepoDigests() == null || inspect.getRepoDigests().isEmpty()) {
-        LOGGER.warn("Could not find repo digest for image '{}'", withBase.baseRepoTag());
+        LOGGER.warn("Could not find repo digest for image '{}'", withBase.baseImageRepoTag());
         continue;
       }
 
-      String remoteDigest = dockerRegistry.getDigest(withBase.baseImage(), withBase.baseTag());
+      String remoteDigest = dockerRegistry.getDigest(withBase.baseImage().image(), withBase.baseImage().tag());
       InspectImageResponse localBaseImage = client.inspectImageCmd(container.getImageId()).exec();
       foo.add(new ContainerWithRemoteInfo(
         withBase,
@@ -194,23 +193,21 @@ public class ImageUpdateChecker {
       .collect(Collectors.toSet());
 
     for (ContainerWithBase withBase : participatingContainers) {
-      String image = withBase.baseImage();
-      String tag = withBase.baseTag();
-
-      if (knownImages.contains(image + ":" + tag)) {
-        LOGGER.debug("Found base image '{}':'{}' for {}", image, tag, withBase.container().getNames());
+      ImageIdentifier image = withBase.baseImage();
+      if (knownImages.contains(image.nameWithTag())) {
+        LOGGER.debug("Found base image '{}':'{}' for {}", image.image(), image.tag(), withBase.container().getNames());
         continue;
       }
-      LOGGER.debug("Pulling image '{}':'{}' for {}", image, tag, withBase.container().getNames());
+      LOGGER.debug("Pulling image '{}':'{}' for {}", image.image(), image.tag(), withBase.container().getNames());
 
-      pullBaseImage(image, tag);
+      pullBaseImage(image);
     }
   }
 
-  private void pullBaseImage(String image, String tag) throws InterruptedException {
-    LOGGER.info("Pulling base image '{}':'{}'", image, tag);
-    client.pullImageCmd(image)
-      .withTag(tag)
+  private void pullBaseImage(ImageIdentifier identifier) throws InterruptedException {
+    LOGGER.info("Pulling base image '{}':'{}'", identifier.image(), identifier.tag());
+    client.pullImageCmd(identifier.image())
+      .withTag(identifier.tag())
       .exec(new PullImageResultCallback())
       .awaitCompletion(5, TimeUnit.MINUTES);
   }
@@ -219,18 +216,19 @@ public class ImageUpdateChecker {
     Container container = info.container().container();
 
     if (info.baseImageOutdated()) {
-      LOGGER.info("Updating base image '{}'", getBaseRepoTag(container));
-      pullBaseImage(getBaseImage(container), getBaseTag(container));
+      ImageIdentifier imageIdentifier = getBaseImageIdentifier(container);
+      LOGGER.info("Updating base image '{}'", imageIdentifier);
+      pullBaseImage(imageIdentifier);
 
       // re-fetch image
       return new ContainerWithRemoteInfo(
         info.container(),
         info.currentRemoteDigest(),
-        client.inspectImageCmd(getBaseRepoTag(container)).exec(),
+        client.inspectImageCmd(imageIdentifier.nameWithTag()).exec(),
         info.containerImage()
       );
     } else {
-      LOGGER.debug("Base image '{}' is up to date", getBaseRepoTag(container));
+      LOGGER.debug("Base image '{}' is up to date", getBaseImageIdentifier(container));
     }
     return info;
   }
@@ -268,8 +266,7 @@ public class ImageUpdateChecker {
       return Optional.of(
         new ContainerWithBase(
           container,
-          libraryHelper.getFriendlyImageName(ContainerWithBaseUtils.getBaseImage(container)),
-          ContainerWithBaseUtils.getBaseTag(container)
+          getBaseImageIdentifier(container).friendly(libraryHelper)
         )
       );
     }
@@ -282,11 +279,9 @@ public class ImageUpdateChecker {
       return Optional.empty();
     }
     String repoTag = imageResponse.getRepoTags().get(0);
-    String[] parts = repoTag.split(":");
-    String image = libraryHelper.getFriendlyImageName(parts[0]);
-    String tag = parts[1];
+    ImageIdentifier baseImage = ImageIdentifier.fromString(repoTag).friendly(libraryHelper);
 
-    return Optional.of(new ContainerWithBase(container, image, tag));
+    return Optional.of(new ContainerWithBase(container, baseImage));
   }
 
   private record ContainerWithRemoteInfo(
@@ -310,8 +305,7 @@ public class ImageUpdateChecker {
         containerImage().getRepoTags(),
         currentRemoteDigest(),
         container().baseImage(),
-        container().baseTag(),
-        metadataFetcher.fetch(container().baseImage(), container().baseTag())
+        metadataFetcher.fetch(container().baseImage())
       );
     }
   }

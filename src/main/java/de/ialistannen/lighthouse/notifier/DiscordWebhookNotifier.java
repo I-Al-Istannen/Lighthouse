@@ -138,11 +138,11 @@ public class DiscordWebhookNotifier implements Notifier {
     LighthouseImageUpdate imageUpdate = update.imageUpdate();
 
     ObjectNode embed = objectMapper.createObjectNode();
-    embed.set("title", new TextNode(imageUpdate.getNameWithTag()));
+    embed.set("title", new TextNode(imageUpdate.imageIdentifier().nameWithTag()));
     embed.set("description", new TextNode("Update found."));
     embed.set(
       "url",
-      new TextNode("https://hub.docker.com/r/%s".formatted(imageUpdate.imageName()))
+      new TextNode("https://hub.docker.com/r/%s".formatted(imageUpdate.imageIdentifier().image()))
     );
     embed.set("color", new IntNode(0xFF6347));
     embed.set("footer", buildFooter());
