@@ -11,6 +11,7 @@ import de.ialistannen.lighthouse.model.BaseImageUpdateStrategy;
 import de.ialistannen.lighthouse.model.EnrollmentMode;
 import de.ialistannen.lighthouse.model.ImageIdentifier;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
+import de.ialistannen.lighthouse.notifier.Notifier;
 import de.ialistannen.lighthouse.registry.DigestFetchException;
 import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
 import de.ialistannen.lighthouse.registry.DockerRegistry;
@@ -44,6 +45,7 @@ public class ImageUpdateChecker {
   private final EnrollmentMode enrollmentMode;
   private final DockerLibraryHelper libraryHelper;
   private final BaseImageUpdateStrategy baseImageUpdateStrategy;
+  private final Notifier notifier;
 
   public ImageUpdateChecker(
     DockerClient client,
@@ -51,7 +53,8 @@ public class ImageUpdateChecker {
     MetadataFetcher metadataFetcher,
     EnrollmentMode enrollmentMode,
     DockerLibraryHelper libraryHelper,
-    BaseImageUpdateStrategy baseImageUpdateStrategy
+    BaseImageUpdateStrategy baseImageUpdateStrategy,
+    Notifier notifier
   ) {
     this.client = client;
     this.dockerRegistry = dockerRegistry;
@@ -59,6 +62,7 @@ public class ImageUpdateChecker {
     this.enrollmentMode = enrollmentMode;
     this.libraryHelper = libraryHelper;
     this.baseImageUpdateStrategy = baseImageUpdateStrategy;
+    this.notifier = notifier;
   }
 
   /**
@@ -152,8 +156,7 @@ public class ImageUpdateChecker {
 
   private Collection<ContainerWithRemoteInfo> getContainersWithRemoteInfo(
     Collection<ContainerWithBase> participatingContainers
-  ) throws IOException, URISyntaxException, InterruptedException {
-
+  ) {
     Collection<ContainerWithRemoteInfo> foo = new HashSet<>();
     for (ContainerWithBase withBase : participatingContainers) {
       Container container = withBase.container();
@@ -170,14 +173,19 @@ public class ImageUpdateChecker {
         continue;
       }
 
-      String remoteDigest = dockerRegistry.getDigest(withBase.baseImage().image(), withBase.baseImage().tag());
-      InspectImageResponse localBaseImage = client.inspectImageCmd(container.getImageId()).exec();
-      foo.add(new ContainerWithRemoteInfo(
-        withBase,
-        remoteDigest,
-        inspect,
-        localBaseImage
-      ));
+      try {
+        String remoteDigest = dockerRegistry.getDigest(withBase.baseImage().image(), withBase.baseImage().tag());
+        InspectImageResponse localBaseImage = client.inspectImageCmd(container.getImageId()).exec();
+        foo.add(new ContainerWithRemoteInfo(
+          withBase,
+          remoteDigest,
+          inspect,
+          localBaseImage
+        ));
+      } catch (Exception e) {
+        LOGGER.warn("Failed to fetch remote info for " + Arrays.toString(container.getNames()), e);
+        notifier.notify(e);
+      }
     }
 
     return foo;

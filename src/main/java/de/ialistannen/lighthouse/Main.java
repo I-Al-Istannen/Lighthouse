@@ -64,13 +64,17 @@ public class Main {
     DockerRegistry dockerRegistry = new DockerRegistry(libraryHelper, httpClient, authsFromArgs(arguments));
     DockerHubMetadataFetcher metadataFetcher = new DockerHubMetadataFetcher(libraryHelper, httpClient);
 
+    JDA jda = buildJda(arguments);
+    Notifier notifier = buildNotifier(arguments, httpClient, jda);
+
     ImageUpdateChecker imageUpdateChecker = new ImageUpdateChecker(
       dockerClient,
       dockerRegistry,
       metadataFetcher,
       enrollmentMode,
       libraryHelper,
-      arguments.baseImageUpdate().orElse(BaseImageUpdateStrategy.ONLY_PULL_UNKNOWN)
+      arguments.baseImageUpdate().orElse(BaseImageUpdateStrategy.ONLY_PULL_UNKNOWN),
+      notifier
     );
     ContainerUpdateChecker containerUpdateChecker = new ContainerUpdateChecker(
       dockerClient,
@@ -78,8 +82,6 @@ public class Main {
       enrollmentMode
     );
 
-    JDA jda = buildJda(arguments);
-    Notifier notifier = buildNotifier(arguments, httpClient, jda);
     UpdateListener updateListener = buildUpdateListener(arguments, notifier, dockerClient, jda);
 
     FileUpdateFilter updateFilter = new FileUpdateFilter(Path.of("data/known-images.json"));

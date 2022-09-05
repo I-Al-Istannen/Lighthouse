@@ -142,6 +142,7 @@ public class DockerRegistry {
    * @throws InterruptedException ?
    * @throws URISyntaxException if you introduce invalid characters
    * @throws DigestFetchException if the server denied the request
+   * @throws TokenFetchException if the server denied the request
    */
   public String getDigest(String image, String tag)
     throws IOException, InterruptedException, URISyntaxException {
