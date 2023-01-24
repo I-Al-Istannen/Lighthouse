@@ -2,7 +2,8 @@ package de.ialistannen.lighthouse.registry;
 
 public class DigestFetchException extends RuntimeException {
 
-  public DigestFetchException(int statusCode) {
-    super("Error fetching digest, got status code " + statusCode);
+  public DigestFetchException(String imageTag, int statusCode) {
+    super("Error fetching digest for '" + imageTag + "' , got status code " + statusCode);
   }
+
 }

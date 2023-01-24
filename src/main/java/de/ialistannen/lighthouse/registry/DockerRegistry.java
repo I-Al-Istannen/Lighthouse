@@ -170,7 +170,7 @@ public class DockerRegistry {
         response.statusCode(),
         response.body()
       );
-      throw new DigestFetchException(response.statusCode());
+      throw new DigestFetchException(image + ":" + tag, response.statusCode());
     }
     return response.headers().firstValue("docker-content-digest").orElseThrow();
   }
