@@ -61,7 +61,8 @@ public class DockerUpdater {
       .awaitCompletion(5, TimeUnit.MINUTES);
   }
 
-  public void rebuildContainers(List<LighthouseContainerUpdate> updates) throws InterruptedException {
+  public void rebuildContainers(List<LighthouseContainerUpdate> updates)
+    throws InterruptedException {
     LOGGER.info("Rebuilding {} containers", updates.size());
     Set<LighthouseImageUpdate> imageUpdates = updates.stream()
       .map(LighthouseContainerUpdate::imageUpdate)
@@ -105,11 +106,13 @@ public class DockerUpdater {
 
       if (statusCode != 0) {
         LOGGER.warn("Rebuild failed with exit code {}", statusCode);
+        throw new RebuildFailedException("Rebuild script failed, exit code: " + statusCode);
       } else {
         LOGGER.info("Rebuild successful");
       }
     } catch (DockerClientException | IOException e) {
       LOGGER.info("Wait operation failed, updater status unknown", e);
+      throw new RebuildFailedException("Waiting for rebuild script failed", e);
     }
   }
 

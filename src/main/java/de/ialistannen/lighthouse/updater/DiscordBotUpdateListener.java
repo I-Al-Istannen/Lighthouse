@@ -51,7 +51,7 @@ public class DiscordBotUpdateListener extends ListenerAdapter implements UpdateL
           hook.editOriginalComponents(ActionRow.of(
             event.getButton().asDisabled()
               .withLabel("Updated!")
-              .withEmoji(Emoji.fromUnicode("\u2705"))
+              .withEmoji(Emoji.fromUnicode("✅"))
               .withStyle(ButtonStyle.SUCCESS)
           )).queue();
         } catch (InterruptedException e) {
