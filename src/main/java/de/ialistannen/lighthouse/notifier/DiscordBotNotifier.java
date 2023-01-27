@@ -5,23 +5,21 @@ import com.google.common.collect.Lists;
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
 import de.ialistannen.lighthouse.registry.RemoteImageMetadata;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.security.auth.login.LoginException;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.MessageBuilder;
-import net.dv8tion.jda.api.entities.Emoji;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,8 +32,6 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
   private final Optional<String> mentionText;
   private final Optional<String> hostname;
 
-  private List<LighthouseContainerUpdate> lastUpdates;
-
   public DiscordBotNotifier(
     TextChannel channel,
     Optional<String> mention,
@@ -45,7 +41,6 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
     this.mention = mention;
     this.mentionText = mentionText;
     this.hostname = hostname;
-    this.lastUpdates = new ArrayList<>();
     this.channel = channel;
   }
 
@@ -72,14 +67,14 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
 
   private void sendEmbed(MessageEmbed embed) {
     if (mention.isPresent()) {
-      sendMessage(new MessageBuilder(embed), List.of());
+      sendMessage(new MessageCreateBuilder().setEmbeds(embed), List.of());
       return;
     }
 
     channel.sendMessageEmbeds(embed).queue();
   }
 
-  private void sendMessage(MessageBuilder messageBuilder, List<LighthouseContainerUpdate> updates) {
+  private void sendMessage(MessageCreateBuilder messageBuilder, List<LighthouseContainerUpdate> updates) {
     mention.ifPresent(mention -> messageBuilder.setContent(
       DiscordNotifierHelper.getExpandedMentionText(mention, mentionText, updates)
     ));
@@ -92,7 +87,7 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
   }
 
   private String getFooter() {
-    return "Made with \u2764\uFE0F";
+    return "Made with ❤️";
   }
 
   @Override
@@ -101,11 +96,9 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
       return;
     }
 
-    this.lastUpdates = updates;
-
     for (List<LighthouseContainerUpdate> batch : Lists.partition(updates, Message.MAX_EMBED_COUNT)) {
       sendMessage(
-        new MessageBuilder()
+        new MessageCreateBuilder()
           .setEmbeds(batch.stream().map(this::buildEmbed).map(EmbedBuilder::build).toList()),
         batch
       );
@@ -179,11 +172,11 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
   }
 
   private void sendActionButtons(Set<LighthouseImageUpdate> updates) {
-    MessageBuilder messageBuilder = new MessageBuilder("\u00A0");
+    MessageCreateBuilder messageBuilder = new MessageCreateBuilder().setContent("\u00A0");
 
-    messageBuilder.setActionRows(ActionRow.of(
-      Button.of(ButtonStyle.PRIMARY, "update-all", "Update all!", Emoji.fromUnicode("\uD83D\uDE80"))
-    ));
+    messageBuilder.setActionRow(
+      Button.of(ButtonStyle.PRIMARY, "update-all", "Update all!", Emoji.fromUnicode("🚀"))
+    );
 
     channel.sendMessage(messageBuilder.build()).queue();
   }

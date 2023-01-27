@@ -34,11 +34,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
-import javax.annotation.Nullable;
 import javax.security.auth.login.LoginException;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.exceptions.InvalidTokenException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,7 +112,7 @@ public class Main {
     }
     try {
       return JDABuilder.createDefault(arguments.webhookUrlOrToken()).build().awaitReady();
-    } catch (InterruptedException | LoginException e) {
+    } catch (InterruptedException | InvalidTokenException e) {
       LOGGER.error("Error logging in to discord", e);
       throw die("Error logging in to discord");
     }
@@ -121,7 +121,7 @@ public class Main {
   private static Notifier buildNotifier(
     CliArguments arguments,
     HttpClient httpClient,
-    @Nullable JDA jda
+    JDA jda
   ) throws URISyntaxException {
 
     if (arguments.useWebhookNotifier()) {
