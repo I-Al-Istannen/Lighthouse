@@ -7,8 +7,6 @@ import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
 import de.ialistannen.lighthouse.registry.RemoteImageMetadata;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 import javax.security.auth.login.LoginException;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
@@ -104,9 +102,7 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
       );
     }
 
-    sendActionButtons(
-      updates.stream().map(LighthouseContainerUpdate::imageUpdate).collect(Collectors.toSet())
-    );
+    sendActionButtons();
   }
 
   private EmbedBuilder buildEmbed(LighthouseContainerUpdate update) {
@@ -171,7 +167,7 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
     );
   }
 
-  private void sendActionButtons(Set<LighthouseImageUpdate> updates) {
+  private void sendActionButtons() {
     MessageCreateBuilder messageBuilder = new MessageCreateBuilder().setContent("\u00A0");
 
     messageBuilder.setActionRow(

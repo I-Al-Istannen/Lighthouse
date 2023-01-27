@@ -73,12 +73,25 @@ public class DockerUpdater {
     }
 
     List<String> command = updates.stream()
+      .filter(it -> !it.isMyself())
       .map(LighthouseContainerUpdate::names)
       .flatMap(Collection::stream)
       .distinct()
       .collect(Collectors.toCollection(ArrayList::new));
     command.add(0, updaterEntrypoint);
 
+    callRebuildScript(command);
+
+    updates.stream()
+      .filter(LighthouseContainerUpdate::isMyself)
+      .findFirst()
+      .ifPresent(lighthouseContainerUpdate -> {
+        LOGGER.info("Updating lighthouse itself, no real progress can be given.");
+        callRebuildScript(lighthouseContainerUpdate.names());
+      });
+  }
+
+  private void callRebuildScript(List<String> command) {
     CreateContainerResponse containerResponse = client.createContainerCmd(updaterDockerImage)
       .withLabels(Map.of("lighthouse-builder-container", "true"))
       .withHostConfig(HostConfig.newHostConfig().withBinds(updaterMounts).withAutoRemove(true))

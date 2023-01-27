@@ -7,10 +7,12 @@ import java.util.List;
  *
  * @param names the names of the container
  * @param imageUpdate the image update
+ * @param isMyself whether this container is a lighthouse instance
  */
 public record LighthouseContainerUpdate(
   List<String> names,
-  LighthouseImageUpdate imageUpdate
+  LighthouseImageUpdate imageUpdate,
+  boolean isMyself
 ) {
 
 }

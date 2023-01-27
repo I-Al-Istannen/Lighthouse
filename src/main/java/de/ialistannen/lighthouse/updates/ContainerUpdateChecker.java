@@ -71,7 +71,8 @@ public class ContainerUpdateChecker {
       updates.add(
         new LighthouseContainerUpdate(
           getContainerNames(container),
-          update
+          update,
+          container.getLabels().containsKey("lighthouse.instance")
         )
       );
     }
