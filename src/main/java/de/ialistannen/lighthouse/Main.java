@@ -5,6 +5,7 @@ import com.cronutils.model.CronType;
 import com.cronutils.model.definition.CronDefinitionBuilder;
 import com.cronutils.parser.CronParser;
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import de.ialistannen.lighthouse.auth.DockerRegistryAuth;
@@ -26,6 +27,7 @@ import de.ialistannen.lighthouse.updater.DockerUpdater;
 import de.ialistannen.lighthouse.updater.UpdateListener;
 import de.ialistannen.lighthouse.updates.ContainerUpdateChecker;
 import de.ialistannen.lighthouse.updates.ImageUpdateChecker;
+import de.ialistannen.lighthouse.util.LighthouseDetector;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -59,6 +61,8 @@ public class Main {
 
     DefaultDockerClientConfig.Builder config = DefaultDockerClientConfig.createDefaultConfigBuilder();
     DockerClient dockerClient = DockerClientBuilder.getInstance(config.build()).build();
+
+    verifyLighthouseInstanceCount(dockerClient);
 
     DockerLibraryHelper libraryHelper = new DockerLibraryHelper(httpClient);
     DockerRegistry dockerRegistry = new DockerRegistry(libraryHelper, httpClient, authsFromArgs(arguments));
@@ -104,6 +108,26 @@ public class Main {
         updateFilter.commit();
       }
     ).runUntilSingularity();
+  }
+
+  private static void verifyLighthouseInstanceCount(DockerClient dockerClient) {
+    int foundLighthouseCount = 0;
+    for (Container container : dockerClient.listContainersCmd().exec()) {
+      foundLighthouseCount += LighthouseDetector.isLighthouse(container) ? 1 : 0;
+    }
+    if (foundLighthouseCount == 0) {
+      LOGGER.warn(
+        "Label '" + LighthouseDetector.LIGHTHOUSE_ID_LABEL + "' not set! "
+          + "Unable to identify own container. Can not update lighthouse last."
+      );
+    }
+    if (foundLighthouseCount > 1) {
+      LOGGER.warn(
+        "Found " + foundLighthouseCount + " containers with the '" + LighthouseDetector.LIGHTHOUSE_ID_LABEL
+          + "' label. "
+          + "Running multiple instances should mostly work, but you are sailing *pretty close* to some nasty cliffs."
+      );
+    }
   }
 
   private static JDA buildJda(CliArguments arguments) {

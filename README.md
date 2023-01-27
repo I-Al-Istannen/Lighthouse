@@ -94,6 +94,9 @@ OPTIONS
   --bot-channel-id BOT-CHANNEL-ID                  The channel id the bot should send updates to
 ```
 
+You also should set the `lighthouse.instance` label on the lighthouse
+container. This allows is to find itself and update itself *last*.
+
 The mention text can include the placeholder `{IMAGES}` which will be replaced
 with a space-separated list of the images having updates available.
 

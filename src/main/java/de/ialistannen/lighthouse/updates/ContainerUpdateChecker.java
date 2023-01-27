@@ -7,6 +7,7 @@ import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
 import de.ialistannen.lighthouse.registry.DigestFetchException;
 import de.ialistannen.lighthouse.registry.TokenFetchException;
+import de.ialistannen.lighthouse.util.LighthouseDetector;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -72,7 +73,7 @@ public class ContainerUpdateChecker {
         new LighthouseContainerUpdate(
           getContainerNames(container),
           update,
-          container.getLabels().containsKey("lighthouse.instance")
+          LighthouseDetector.isLighthouse(container)
         )
       );
     }
