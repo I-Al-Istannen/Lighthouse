@@ -154,6 +154,7 @@ public class DockerRegistry {
     HttpRequest request = HttpRequest.newBuilder(new URI(url))
       // Shotgun-approach: Get whatever the newest is they support as that hopefully matches the local one.
       // We compare manifest digests, so this must be the same the client uses.
+      .header("Accept", "application/vnd.oci.image.index.v1+json")
       .header("Accept", "application/vnd.docker.distribution.manifest.list.v2+json")
       .header("Accept", "application/vnd.docker.distribution.manifest.v1+json")
       .header("Accept", "application/vnd.docker.distribution.manifest.v2+json")
