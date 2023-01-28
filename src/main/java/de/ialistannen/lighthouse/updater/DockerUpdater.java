@@ -82,13 +82,21 @@ public class DockerUpdater {
 
     callRebuildScript(command);
 
-    updates.stream()
+    List<LighthouseContainerUpdate> lighthouseUpdates = updates.stream()
       .filter(LighthouseContainerUpdate::isMyself)
-      .findFirst()
-      .ifPresent(lighthouseContainerUpdate -> {
-        LOGGER.info("Updating lighthouse itself, no real progress can be given.");
-        callRebuildScript(lighthouseContainerUpdate.names());
-      });
+      .toList();
+
+    if (!lighthouseUpdates.isEmpty()) {
+      LOGGER.info("Updating lighthouse itself, no real progress can be given.");
+      if (lighthouseUpdates.size() > 1) {
+        LOGGER.warn(
+          "Multiple lighthouse instances detected. "
+            + "Your use-case might be interesting to hear :) "
+            + "~~Objects~~ *cliffs* in your mirror are closer than they appear..."
+        );
+      }
+      callRebuildScript(lighthouseUpdates.stream().flatMap(it -> it.names().stream()).toList());
+    }
   }
 
   private void callRebuildScript(List<String> command) {
