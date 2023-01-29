@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +62,7 @@ public class DockerUpdater {
       .awaitCompletion(5, TimeUnit.MINUTES);
   }
 
-  public void rebuildContainers(List<LighthouseContainerUpdate> updates)
+  public void rebuildContainers(List<LighthouseContainerUpdate> updates, Consumer<String> successHook)
     throws InterruptedException {
     LOGGER.info("Rebuilding {} containers", updates.size());
     Set<LighthouseImageUpdate> imageUpdates = updates.stream()
@@ -85,6 +86,12 @@ public class DockerUpdater {
     List<LighthouseContainerUpdate> lighthouseUpdates = updates.stream()
       .filter(LighthouseContainerUpdate::isMyself)
       .toList();
+
+    if (lighthouseUpdates.isEmpty()) {
+      successHook.accept("Updated!");
+    } else {
+      successHook.accept("Updated (except for " + lighthouseUpdates.size() + " Lighthouse instances)!");
+    }
 
     if (!lighthouseUpdates.isEmpty()) {
       LOGGER.info("Updating lighthouse itself, no real progress can be given.");

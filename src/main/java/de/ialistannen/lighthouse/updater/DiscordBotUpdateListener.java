@@ -47,13 +47,15 @@ public class DiscordBotUpdateListener extends ListenerAdapter implements UpdateL
 
     CompletableFuture.runAsync(() -> {
         try {
-          updater.rebuildContainers(lastUpdates);
-          hook.editOriginalComponents(ActionRow.of(
-            event.getButton().asDisabled()
-              .withLabel("Updated!")
-              .withEmoji(Emoji.fromUnicode("✅"))
-              .withStyle(ButtonStyle.SUCCESS)
-          )).queue();
+          updater.rebuildContainers(
+            lastUpdates,
+            label -> hook.editOriginalComponents(ActionRow.of(
+              event.getButton().asDisabled()
+                .withLabel(label)
+                .withEmoji(Emoji.fromUnicode("✅"))
+                .withStyle(ButtonStyle.SUCCESS)
+            )).queue()
+          );
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
