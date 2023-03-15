@@ -64,7 +64,7 @@ public class NtfyNotifier implements Notifier {
     LOGGER.info("Notifying in ntfy");
 
     for (LighthouseContainerUpdate update : updates) {
-      HttpRequest request = HttpRequest.newBuilder()
+      HttpRequest request = HttpRequest.newBuilder(url)
         .header("X-Title", "Lighthouse" + hostname.map(h -> " (" + h + ")").orElse(""))
         .header("X-Tag", "cherry_blossom")
         .header("X-Icon", LIGHTHOUSE_LOGO)
