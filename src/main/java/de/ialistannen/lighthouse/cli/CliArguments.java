@@ -66,10 +66,13 @@ public interface CliArguments {
   @Option(names = "--bot-channel-id", description = "The channel id the bot should send updates to")
   Optional<String> botChannelId();
 
-  @Parameter(index = 0, description = "Discord webhook URL or discord bot token", paramLabel = "URL|TOKEN")
+  @Option(names = "--ntfy", description = "Use ntfy to send notifications")
+  boolean ntfy();
+
+  @Parameter(index = 0, description = "Webhook URL or discord bot token", paramLabel = "URL|TOKEN")
   String webhookUrlOrToken();
 
   default boolean useWebhookNotifier() {
-    return webhookUrlOrToken().toLowerCase(Locale.ROOT).startsWith("https://discord.com/api/webhooks");
+    return webhookUrlOrToken().toLowerCase(Locale.ROOT).startsWith("https://");
   }
 }

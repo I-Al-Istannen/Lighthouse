@@ -18,6 +18,7 @@ import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.notifier.DiscordBotNotifier;
 import de.ialistannen.lighthouse.notifier.DiscordWebhookNotifier;
 import de.ialistannen.lighthouse.notifier.Notifier;
+import de.ialistannen.lighthouse.notifier.NtfyNotifier;
 import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
 import de.ialistannen.lighthouse.registry.DockerRegistry;
 import de.ialistannen.lighthouse.storage.FileUpdateFilter;
@@ -149,13 +150,21 @@ public class Main {
   ) throws URISyntaxException {
 
     if (arguments.useWebhookNotifier()) {
-      return new DiscordWebhookNotifier(
-        httpClient,
-        new URI(arguments.webhookUrlOrToken()),
-        arguments.mention(),
-        arguments.mentionText(),
-        arguments.hostname()
-      );
+      if (arguments.ntfy()) {
+        return new NtfyNotifier(
+          httpClient,
+          new URI(arguments.webhookUrlOrToken()),
+          arguments.hostname()
+        );
+      } else {
+        return new DiscordWebhookNotifier(
+          httpClient,
+          new URI(arguments.webhookUrlOrToken()),
+          arguments.mention(),
+          arguments.mentionText(),
+          arguments.hostname()
+        );
+      }
     }
 
     if (jda == null) {
