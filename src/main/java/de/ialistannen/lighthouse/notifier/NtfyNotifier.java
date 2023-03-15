@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 public class NtfyNotifier implements Notifier {
 
   private static final String LIGHTHOUSE_LOGO =
-      "https://raw.githubusercontent.com/ialistannen/lighthouse/master/lighthouse.png?raw=true";
+      "https://raw.githubusercontent.com/I-Al-Istannen/Lighthouse/master/media/lighthouse.png?raw=true";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NtfyNotifier.class);
 
