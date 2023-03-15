@@ -49,7 +49,7 @@ public class NtfyNotifier implements Notifier {
 
     HttpRequest request = HttpRequest.newBuilder(url)
       .header("X-Title", "Lighthouse Error" + hostname.map(h -> " (" + h + ")").orElse(""))
-      .header("X-Tag", "lady_beetle")
+      .header("X-Tags", "lady_beetle")
       .header("X-Icon", LIGHTHOUSE_LOGO)
       .POST(BodyPublishers.ofString("```\n" + stacktrace + "\n```"))
       .build();
@@ -66,7 +66,7 @@ public class NtfyNotifier implements Notifier {
     for (LighthouseContainerUpdate update : updates) {
       HttpRequest request = HttpRequest.newBuilder(url)
         .header("X-Title", "Lighthouse" + hostname.map(h -> " (" + h + ")").orElse(""))
-        .header("X-Tag", "cherry_blossom")
+        .header("X-Tags", "cherry_blossom")
         .header("X-Icon", LIGHTHOUSE_LOGO)
         .header("X-Click", "https://hub.docker.com/r/%s".formatted(update.imageUpdate().imageIdentifier().image()))
         .POST(BodyPublishers.ofString(buildPayload(update)))
