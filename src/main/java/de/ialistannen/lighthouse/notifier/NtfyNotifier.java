@@ -51,7 +51,7 @@ public class NtfyNotifier implements Notifier {
       .header("X-Title", "Lighthouse Error" + hostname.map(h -> " (" + h + ")").orElse(""))
       .header("X-Tags", "lady_beetle")
       .header("X-Icon", LIGHTHOUSE_LOGO)
-      .POST(BodyPublishers.ofString("```\n" + stacktrace + "\n```"))
+      .POST(BodyPublishers.ofString("stacktrace"))
       .build();
     send(request);
   }
@@ -96,7 +96,7 @@ public class NtfyNotifier implements Notifier {
       Container: %s
       Images: %s
       Metadata: %s
-      Digest: `%s`
+      Digest: %s
       """.formatted(
         image.imageIdentifier().nameWithTag(),
         String.join(", ", update.names()),
