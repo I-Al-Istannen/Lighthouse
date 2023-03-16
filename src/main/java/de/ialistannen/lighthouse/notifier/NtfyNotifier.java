@@ -73,6 +73,8 @@ public class NtfyNotifier implements Notifier {
         .build();
       send(request);
     }
+
+    send(buildUpdateRequest(updates.size()));
   }
 
   private void send(HttpRequest request) {
@@ -104,5 +106,23 @@ public class NtfyNotifier implements Notifier {
         image.remoteImageMetadata().map(m -> "%s by %s".formatted(m.updateTime(), m.updatedBy())).orElse("unknown"),
         image.remoteManifestDigest()
       );
+  }
+
+  private HttpRequest buildUpdateRequest(int updates) {
+    return HttpRequest.newBuilder(url)
+      .header("X-Title", "Lighthouse Update" + hostname.map(h -> " (" + h + ")").orElse(""))
+      .header("X-Tags", "seedling")
+      .header("X-Icon", LIGHTHOUSE_LOGO)
+      .header("X-Actions", """
+          http,
+          Update,
+          %s,
+          header.X-Title=Lighthouse Update,
+          header.X-Tags=watermelon,
+          body=Update all containers
+          """.formatted(url.toString())
+      )
+      .POST(BodyPublishers.ofString("Click to apply %d update(s)".formatted(updates)))
+      .build();
   }
 }
