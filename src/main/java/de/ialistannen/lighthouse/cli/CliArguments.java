@@ -66,7 +66,7 @@ public interface CliArguments {
   @Option(names = "--bot-channel-id", description = "The channel id the bot should send updates to")
   Optional<String> botChannelId();
 
-  @Option(names = "--ntfy", description = "Use ntfy to send notifications")
+  @Option(names = "--ntfy", description = "Use ntfy to send notifications and receive update requests. Default: false")
   boolean ntfy();
 
   @Parameter(index = 0, description = "Webhook URL or discord bot token", paramLabel = "URL|TOKEN")

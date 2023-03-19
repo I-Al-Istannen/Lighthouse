@@ -51,7 +51,7 @@ public class NtfyNotifier implements Notifier {
       .header("X-Title", "Lighthouse Error" + hostname.map(h -> " (" + h + ")").orElse(""))
       .header("X-Tags", "warning")
       .header("X-Icon", LIGHTHOUSE_LOGO)
-      .POST(BodyPublishers.ofString("stacktrace"))
+      .POST(BodyPublishers.ofString(stacktrace))
       .build();
     send(request);
   }
@@ -75,10 +75,10 @@ public class NtfyNotifier implements Notifier {
     }
 
     try {
-      // The image notifications should be sent before the update notification
       Thread.sleep(2000);
     } catch (InterruptedException e) {
-      // ignore
+      // Update notifications should be send after image notifications, how long delayed is not important
+      LOGGER.debug("Interrupted while waiting for update notifications to be sent", e);
     }
     send(buildUpdateRequest(updates.size()));
   }
@@ -124,6 +124,7 @@ public class NtfyNotifier implements Notifier {
           + url.toString() + ", "
           + "headers.X-Title=Lighthouse Update" + hostname.map(h -> " (" + h + ")").orElse("") + ", "
           + "headers.X-Tags=page_facing_up, "
+          + "headers.X-Icon=" + LIGHTHOUSE_LOGO + ", "
           + "body=Update all containers"
       )
       .POST(BodyPublishers.ofString("Click to apply %d update(s)".formatted(updates)))

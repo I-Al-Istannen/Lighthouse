@@ -47,75 +47,51 @@ public class NtfyUpdateListener implements UpdateListener, Runnable {
     this.lastUpdates = updates;
   }
 
+  @Override
   public void run() {
-    HttpRequest request;
     try {
-      request = HttpRequest.newBuilder(new URI(url.toString() + "/json"))
+      HttpRequest request = HttpRequest.newBuilder(new URI(url.toString() + "/json"))
         .header("X-Title", "Lighthouse Update" + hostname.map(h -> " (" + h + ")").orElse(""))
         .header("X-Tags", "page_facing_up")
         .header("X-Message", "Update all containers")
         .build();
-        sendListen(request);
+      listen(request);
     } catch (URISyntaxException e) {
-      e.printStackTrace();
+      LOGGER.warn("Ntfy request URI is invalid", e);
     }
   }
 
-  private void sendListen(HttpRequest request) {
-    httpClient.sendAsync(request, BodyHandlers.fromLineSubscriber(new UpdateSubscriber())).thenAccept(response -> {
+  public void start() {
+    new Thread(this).start();
+  }
+
+  private void listen(HttpRequest request) {
+    httpClient.sendAsync(request, BodyHandlers.fromLineSubscriber(new UpdateRequestSubscriber()))
+      .thenAccept(response -> {
         if (response.statusCode() != 200 && response.statusCode() != 204) {
-          LOGGER.warn("Received non-200 status code: {}", response.statusCode());
+          LOGGER.warn("Failed to listen (HTTP {})", response.statusCode());
         }
+        retry(request);
       })
       .exceptionally(throwable -> {
-        LOGGER.warn("Error while listening", throwable);
+        LOGGER.warn("Failed to listen", throwable);
         notifier.notify(throwable);
+        retry(request);
         return null;
       });
   }
 
-  private void update() {
-    LOGGER.info("Received update request");
-
-    CompletableFuture.runAsync(() -> {
-        try {
-          updater.rebuildContainers(lastUpdates, label -> LOGGER.info("Update finished"));
-          success();
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
-        }
-      })
-      .exceptionally(throwable -> {
-        LOGGER.warn("Error while updating all", throwable);
-        notifier.notify(throwable);
-        return null;
-      });
-  }
-
-  private void success() {
-    HttpRequest request = HttpRequest.newBuilder(url)
-    .header("X-Title", "Lighthouse Update" + hostname.map(h -> " (" + h + ")").orElse(""))
-    .header("X-Tags", "rocket")
-    .header("X-Icon", LIGHTHOUSE_LOGO)
-    .POST(BodyPublishers.ofString("All updates applied"))
-    .build();
-    send(request);
-  }
-
-  private void send(HttpRequest request) {
+  private void retry(HttpRequest request) {
+    LOGGER.info("Retrying to listen in 30 seconds");
     try {
-      LOGGER.debug("Sending webhook {}", request.bodyPublisher().orElse(BodyPublishers.noBody()));
-
-      HttpResponse<String> response = httpClient.send(request, BodyHandlers.ofString());
-      if (response.statusCode() != 200 && response.statusCode() != 204) {
-        LOGGER.warn("Failed to notify (HTTP {}): {}", response.statusCode(), response.body());
-      }
-    } catch (IOException | InterruptedException e) {
-      LOGGER.warn("Failed to notify!", e);
+      Thread.sleep(30000);
+    } catch (InterruptedException e) {
+      LOGGER.debug("Interrupted while waiting to retry", e);
     }
+    listen(request);
   }
 
-  class UpdateSubscriber implements Flow.Subscriber<String> {
+  class UpdateRequestSubscriber implements Flow.Subscriber<String> {
     @Override
     public void onSubscribe(Flow.Subscription subscription) {
       LOGGER.info("Listening for updates");
@@ -127,8 +103,8 @@ public class NtfyUpdateListener implements UpdateListener, Runnable {
       if (!item.contains("\"event\":\"message\"")) {
         return;
       }
-      LOGGER.info("Received update request from ntfy {}", item);
-      NtfyUpdateListener.this.update();
+      LOGGER.debug("Received update request from ntfy: {}", item);
+      update();
     }
 
     @Override
@@ -140,6 +116,47 @@ public class NtfyUpdateListener implements UpdateListener, Runnable {
     @Override
     public void onComplete() {
       LOGGER.info("Listening for updates completed");
+    }
+
+    private void update() {
+      LOGGER.info("Received update request");
+
+      CompletableFuture.runAsync(() -> {
+          try {
+            updater.rebuildContainers(lastUpdates, label -> LOGGER.info("Update finished"));
+            success();
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+        })
+        .exceptionally(throwable -> {
+          LOGGER.warn("Error while updating all", throwable);
+          notifier.notify(throwable);
+          return null;
+        });
+    }
+
+    private void success() {
+      HttpRequest request = HttpRequest.newBuilder(url)
+        .header("X-Title", "Lighthouse Update" + hostname.map(h -> " (" + h + ")").orElse(""))
+        .header("X-Tags", "rocket")
+        .header("X-Icon", LIGHTHOUSE_LOGO)
+        .POST(BodyPublishers.ofString("All updates applied"))
+        .build();
+      send(request);
+    }
+
+    private void send(HttpRequest request) {
+      try {
+        LOGGER.debug("Sending webhook {}", request.bodyPublisher().orElse(BodyPublishers.noBody()));
+
+        HttpResponse<String> response = httpClient.send(request, BodyHandlers.ofString());
+        if (response.statusCode() != 200 && response.statusCode() != 204) {
+          LOGGER.warn("Failed to notify (HTTP {}): {}", response.statusCode(), response.body());
+        }
+      } catch (IOException | InterruptedException e) {
+        LOGGER.warn("Failed to notify!", e);
+      }
     }
   }
 }

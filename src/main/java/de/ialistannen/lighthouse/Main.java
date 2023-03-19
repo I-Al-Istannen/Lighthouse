@@ -157,15 +157,14 @@ public class Main {
           new URI(arguments.webhookUrlOrToken()),
           arguments.hostname()
         );
-      } else {
-        return new DiscordWebhookNotifier(
-          httpClient,
-          new URI(arguments.webhookUrlOrToken()),
-          arguments.mention(),
-          arguments.mentionText(),
-          arguments.hostname()
-        );
       }
+      return new DiscordWebhookNotifier(
+        httpClient,
+        new URI(arguments.webhookUrlOrToken()),
+        arguments.mention(),
+        arguments.mentionText(),
+        arguments.hostname()
+      );
     }
 
     if (jda == null) {
@@ -207,20 +206,18 @@ public class Main {
           new URI(arguments.webhookUrlOrToken()),
           arguments.hostname()
         );
-        new Thread(listener).start();
+        listener.start();
         return listener;
-      } else {
-        return ignored -> {
-        };
       }
-    } else {
-      DiscordBotUpdateListener listener = new DiscordBotUpdateListener(
-        buildUpdater(arguments, client),
-        notifier
-      );
-      jda.addEventListener(listener);
-      return listener;
+      return ignored -> {
+      };
     }
+    DiscordBotUpdateListener listener = new DiscordBotUpdateListener(
+      buildUpdater(arguments, client),
+      notifier
+    );
+    jda.addEventListener(listener);
+    return listener;
   }
 
   private static DockerUpdater buildUpdater(CliArguments arguments, DockerClient client) {
