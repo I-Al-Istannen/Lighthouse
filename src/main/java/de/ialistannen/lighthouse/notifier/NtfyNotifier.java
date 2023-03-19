@@ -113,14 +113,12 @@ public class NtfyNotifier implements Notifier {
       .header("X-Title", "Lighthouse Update" + hostname.map(h -> " (" + h + ")").orElse(""))
       .header("X-Tags", "envelope")
       .header("X-Icon", LIGHTHOUSE_LOGO)
-      .header("X-Actions", """
-          http,
-          Update,
-          %s,
-          headers.X-Title=Lighthouse Update,
-          headers.X-Tags=page_facing_up,
-          body=Update all containers
-          """.formatted(url.toString())
+      .header("X-Actions", "http, "
+          + "Update, "
+          + url.toString() + ", "
+          + "headers.X-Title=Lighthouse Update" + hostname.map(h -> " (" + h + ")").orElse("") + ", "
+          + "headers.X-Tags=page_facing_up, "
+          + "body=Update all containers"
       )
       .POST(BodyPublishers.ofString("Click to apply %d update(s)".formatted(updates)))
       .build();
