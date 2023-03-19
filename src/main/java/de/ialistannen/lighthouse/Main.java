@@ -18,12 +18,14 @@ import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.notifier.DiscordBotNotifier;
 import de.ialistannen.lighthouse.notifier.DiscordWebhookNotifier;
 import de.ialistannen.lighthouse.notifier.Notifier;
+import de.ialistannen.lighthouse.notifier.NtfyNotifier;
 import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
 import de.ialistannen.lighthouse.registry.DockerRegistry;
 import de.ialistannen.lighthouse.storage.FileUpdateFilter;
 import de.ialistannen.lighthouse.timing.CronRunner;
 import de.ialistannen.lighthouse.updater.DiscordBotUpdateListener;
 import de.ialistannen.lighthouse.updater.DockerUpdater;
+import de.ialistannen.lighthouse.updater.NtfyUpdateListener;
 import de.ialistannen.lighthouse.updater.UpdateListener;
 import de.ialistannen.lighthouse.updates.ContainerUpdateChecker;
 import de.ialistannen.lighthouse.updates.ImageUpdateChecker;
@@ -86,7 +88,7 @@ public class Main {
       enrollmentMode
     );
 
-    UpdateListener updateListener = buildUpdateListener(arguments, notifier, dockerClient, jda);
+    UpdateListener updateListener = buildUpdateListener(arguments, httpClient, notifier, dockerClient, jda);
 
     FileUpdateFilter updateFilter = new FileUpdateFilter(Path.of("data/known-images.json"));
 
@@ -149,6 +151,13 @@ public class Main {
   ) throws URISyntaxException {
 
     if (arguments.useWebhookNotifier()) {
+      if (arguments.ntfy()) {
+        return new NtfyNotifier(
+          httpClient,
+          new URI(arguments.webhookUrlOrToken()),
+          arguments.hostname()
+        );
+      }
       return new DiscordWebhookNotifier(
         httpClient,
         new URI(arguments.webhookUrlOrToken()),
@@ -186,9 +195,20 @@ public class Main {
   }
 
   private static UpdateListener buildUpdateListener(
-    CliArguments arguments, Notifier notifier, DockerClient client, JDA jda
-  ) {
+    CliArguments arguments, HttpClient httpClient, Notifier notifier, DockerClient client, JDA jda
+  ) throws URISyntaxException {
     if (arguments.useWebhookNotifier()) {
+      if (arguments.ntfy()) {
+        NtfyUpdateListener listener = new NtfyUpdateListener(
+          httpClient,
+          buildUpdater(arguments, client),
+          notifier,
+          new URI(arguments.webhookUrlOrToken()),
+          arguments.hostname()
+        );
+        listener.start();
+        return listener;
+      }
       return ignored -> {
       };
     }
