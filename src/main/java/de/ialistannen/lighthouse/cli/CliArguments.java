@@ -69,7 +69,7 @@ public interface CliArguments {
   @Option(names = "--ntfy", description = "Use ntfy to send notifications and receive update requests. Default: false")
   boolean ntfy();
 
-  @Parameter(index = 0, description = "Webhook URL or discord bot token", paramLabel = "URL|TOKEN")
+  @Parameter(index = 0, description = "Discord Webhook URL, Discord Bot Token or ntfy Webhook URL", paramLabel = "URL|TOKEN")
   String webhookUrlOrToken();
 
   default boolean useWebhookNotifier() {
