@@ -198,28 +198,29 @@ public class Main {
   private static UpdateListener buildUpdateListener(
     CliArguments arguments, HttpClient httpClient, Notifier notifier, DockerClient client, JDA jda
   ) throws URISyntaxException {
-    UpdateListener listener;
     if (arguments.useWebhookNotifier()) {
       if (arguments.ntfy()) {
-        listener = new NtfyUpdateListener(
+        NtfyUpdateListener listener = new NtfyUpdateListener(
           httpClient,
           buildUpdater(arguments, client),
           notifier,
           new URI(arguments.webhookUrlOrToken()),
           arguments.hostname()
         );
+        new Thread(listener).start();
+        return listener;
       } else {
         return ignored -> {
         };
       }
     } else {
-      listener = new DiscordBotUpdateListener(
+      DiscordBotUpdateListener listener = new DiscordBotUpdateListener(
         buildUpdater(arguments, client),
         notifier
       );
       jda.addEventListener(listener);
+      return listener;
     }
-    return listener;
   }
 
   private static DockerUpdater buildUpdater(CliArguments arguments, DockerClient client) {

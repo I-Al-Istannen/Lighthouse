@@ -4,6 +4,7 @@ import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.notifier.Notifier;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -17,7 +18,7 @@ import java.util.concurrent.Flow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NtfyUpdateListener implements UpdateListener {
+public class NtfyUpdateListener implements UpdateListener, Runnable {
 
   private static final String LIGHTHOUSE_LOGO =
       "https://raw.githubusercontent.com/I-Al-Istannen/Lighthouse/master/media/lighthouse.png?raw=true";
@@ -46,13 +47,18 @@ public class NtfyUpdateListener implements UpdateListener {
     this.lastUpdates = updates;
   }
 
-  public void listen() {
-    HttpRequest request = HttpRequest.newBuilder(url)
-      .header("X-Title", "Lighthouse Update" + hostname.map(h -> " (" + h + ")").orElse(""))
-      .header("X-Tags", "page_facing_up")
-      .header("X-Message", "Update all containers")
-      .build();
-    sendListen(request);
+  public void run() {
+    HttpRequest request;
+    try {
+      request = HttpRequest.newBuilder(new URI(url.toString() + "/json"))
+        .header("X-Title", "Lighthouse Update" + hostname.map(h -> " (" + h + ")").orElse(""))
+        .header("X-Tags", "page_facing_up")
+        .header("X-Message", "Update all containers")
+        .build();
+        sendListen(request);
+    } catch (URISyntaxException e) {
+      e.printStackTrace();
+    }
   }
 
   private void sendListen(HttpRequest request) {
@@ -88,7 +94,7 @@ public class NtfyUpdateListener implements UpdateListener {
 
   private void success() {
     HttpRequest request = HttpRequest.newBuilder(url)
-    .header("X-Title", "Lighthouse" + hostname.map(h -> " (" + h + ")").orElse(""))
+    .header("X-Title", "Lighthouse Update" + hostname.map(h -> " (" + h + ")").orElse(""))
     .header("X-Tags", "rocket")
     .header("X-Icon", LIGHTHOUSE_LOGO)
     .POST(BodyPublishers.ofString("All updates applied"))
@@ -118,9 +124,10 @@ public class NtfyUpdateListener implements UpdateListener {
 
     @Override
     public void onNext(String item) {
-      if (item.contains("keepalive")) {
+      if (!item.contains("\"event\":\"message\"")) {
         return;
       }
+      LOGGER.info("Received update request from ntfy {}", item);
       NtfyUpdateListener.this.update();
     }
 
