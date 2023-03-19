@@ -62,7 +62,7 @@ public class NtfyUpdateListener implements UpdateListener {
         }
       })
       .exceptionally(throwable -> {
-        LOGGER.warn("Error while sending notification", throwable);
+        LOGGER.warn("Error while listening", throwable);
         notifier.notify(throwable);
         return null;
       });
@@ -84,7 +84,6 @@ public class NtfyUpdateListener implements UpdateListener {
         notifier.notify(throwable);
         return null;
       });
-
   }
 
   private void success() {
