@@ -49,7 +49,7 @@ public class NtfyNotifier implements Notifier {
 
     HttpRequest request = HttpRequest.newBuilder(url)
       .header("X-Title", "Lighthouse Error" + hostname.map(h -> " (" + h + ")").orElse(""))
-      .header("X-Tags", "lady_beetle")
+      .header("X-Tags", "warning")
       .header("X-Icon", LIGHTHOUSE_LOGO)
       .POST(BodyPublishers.ofString("stacktrace"))
       .build();
@@ -66,7 +66,7 @@ public class NtfyNotifier implements Notifier {
     for (LighthouseContainerUpdate update : updates) {
       HttpRequest request = HttpRequest.newBuilder(url)
         .header("X-Title", "Lighthouse" + hostname.map(h -> " (" + h + ")").orElse(""))
-        .header("X-Tags", "cherry_blossom")
+        .header("X-Tags", "mailbox_with_mail")
         .header("X-Icon", LIGHTHOUSE_LOGO)
         .header("X-Click", "https://hub.docker.com/r/%s".formatted(update.imageUpdate().imageIdentifier().image()))
         .POST(BodyPublishers.ofString(buildPayload(update)))
@@ -111,14 +111,14 @@ public class NtfyNotifier implements Notifier {
   private HttpRequest buildUpdateRequest(int updates) {
     return HttpRequest.newBuilder(url)
       .header("X-Title", "Lighthouse Update" + hostname.map(h -> " (" + h + ")").orElse(""))
-      .header("X-Tags", "seedling")
+      .header("X-Tags", "envelope")
       .header("X-Icon", LIGHTHOUSE_LOGO)
       .header("X-Actions", """
           http,
           Update,
           %s,
-          header.X-Title=Lighthouse Update,
-          header.X-Tags=watermelon,
+          headers.X-Title=Lighthouse Update,
+          headers.X-Tags=page_facing_up,
           body=Update all containers
           """.formatted(url.toString())
       )
