@@ -74,6 +74,12 @@ public class NtfyNotifier implements Notifier {
       send(request);
     }
 
+    try {
+      // The image notifications should be sent before the update notification
+      Thread.sleep(2000);
+    } catch (InterruptedException e) {
+      // ignore
+    }
     send(buildUpdateRequest(updates.size()));
   }
 
