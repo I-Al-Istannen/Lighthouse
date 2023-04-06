@@ -20,6 +20,7 @@ class DiscordNotifierHelper {
       .map(LighthouseContainerUpdate::imageUpdate)
       .map(LighthouseImageUpdate::imageIdentifier)
       .map(ImageIdentifier::nameWithTag)
+      .distinct()
       .collect(Collectors.joining(" "));
 
     text = text.replace("{IMAGES}", images);
