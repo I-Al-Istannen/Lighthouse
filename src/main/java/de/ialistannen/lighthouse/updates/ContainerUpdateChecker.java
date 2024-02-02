@@ -59,7 +59,7 @@ public class ContainerUpdateChecker {
       it -> it
     ));
 
-    for (Container container : client.listContainersCmd().exec()) {
+    for (Container container : client.listContainersCmd().withShowAll(true).exec()) {
       if (!imageMap.containsKey(container.getImageId())) {
         if (enrollmentMode.isParticipating(container)) {
           LOGGER.info("Container '{}' is up to date", getContainerNames(container));

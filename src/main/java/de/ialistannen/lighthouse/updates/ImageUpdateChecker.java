@@ -243,6 +243,7 @@ public class ImageUpdateChecker {
 
   private Collection<ContainerWithBase> getParticipatingBaseTaggedContainers() {
     return client.listContainersCmd()
+      .withShowAll(true)
       .exec()
       .stream()
       .filter(enrollmentMode::isParticipating)
@@ -257,6 +258,7 @@ public class ImageUpdateChecker {
 
   private Collection<ContainerWithBase> getParticipatingBasicContainers() {
     return client.listContainersCmd()
+      .withShowAll(true)
       .exec()
       .stream()
       .filter(enrollmentMode::isParticipating)
