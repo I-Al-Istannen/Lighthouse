@@ -56,6 +56,16 @@
         <configuration>
           <from>
             <image>openjdk:17</image>
+            <platforms>
+              <platform>
+                <architecture>arm64</architecture>
+                <os>linux</os>
+              </platform>
+              <platform>
+                <architecture>amd64</architecture>
+                <os>linux</os>
+              </platform>
+            </platforms>
           </from>
           <to>
             <image>ghcr.io/i-al-istannen/lighthouse:latest</image>
