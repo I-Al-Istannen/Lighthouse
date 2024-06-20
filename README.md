@@ -144,7 +144,7 @@ services:
       # Tag the user with id 12345678
       - '--mention=<@12345678>'
       # Include this text after the mention
-      - '--mentionText=I got some news!'
+      - '--mention-text=I got some news!'
       # Run every day at 06:13 (https://crontab.guru/#13_06_*_*_*)
       - '--check-times=13 06 * * *'
       # Post to this webhook
@@ -182,7 +182,7 @@ services:
       # Tag the user with id 12345678
       - '--mention=<@12345678>'
       # Include this text after the mention
-      - '--mentionText=I got some news!'
+      - '--mention-text=I got some news!'
       # Run every day at 06:13 (https://crontab.guru/#13_06_*_*_*)
       - '--check-times=13 06 * * *'
       # Use this bot token
