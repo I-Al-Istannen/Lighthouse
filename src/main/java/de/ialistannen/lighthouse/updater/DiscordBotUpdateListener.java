@@ -91,6 +91,17 @@ public class DiscordBotUpdateListener extends ListenerAdapter implements UpdateL
   @Override
   public void onStringSelectInteraction(StringSelectInteractionEvent event) {
     LOGGER.info("Received string select interaction: {}", event.getComponentId());
+
+    if (!event.getComponentId().startsWith("image-select-")) {
+      LOGGER.info("Unknown component id {}", event.getComponentId());
+      event.reply("I don't know that action :/").queue();
+      return;
+    } else if (!event.getComponentId().substring("image-select-".length()).equals(String.valueOf(lastUpdates.hashCode()))) {
+      LOGGER.info("Unknown updates for id {}", event.getComponentId());
+      event.reply("Sorry, selecting containers and updating is only supported for the latest notification").queue();
+      return;
+    }
+
     selectedUpdates = new ArrayList<>(event.getValues());
     event.deferEdit().queue();
   }

@@ -173,7 +173,7 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
     MessageCreateBuilder messageBuilder = new MessageCreateBuilder().setContent("\u00A0");
 
     messageBuilder.addActionRow(
-      StringSelectMenu.create("images to update")
+      StringSelectMenu.create("image-select-" + updates.hashCode())
           .setMinValues(1)
           .setMaxValues(25)
           .addOptions(updates.stream()
