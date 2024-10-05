@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
@@ -21,34 +22,51 @@ public class DiscordBotUpdateListener extends ListenerAdapter implements UpdateL
   private final DockerUpdater updater;
   private final Notifier notifier;
   private List<LighthouseContainerUpdate> lastUpdates;
+  private List<String> selectedUpdates;
 
   public DiscordBotUpdateListener(DockerUpdater updater, Notifier notifier) {
     this.updater = updater;
     this.notifier = notifier;
     this.lastUpdates = new ArrayList<>();
+    this.selectedUpdates = null;
   }
 
   @Override
   public void onUpdatesFound(List<LighthouseContainerUpdate> updates) {
     this.lastUpdates = updates;
+    this.selectedUpdates = null;
   }
 
   @Override
   public void onButtonInteraction(ButtonInteractionEvent event) {
     LOGGER.info("Received button interaction: {}", event.getComponentId());
 
-    if (!"update-all".equalsIgnoreCase(event.getComponentId())) {
+    if (!event.getComponentId().startsWith("update-")) {
+      LOGGER.info("Unknown component id {}", event.getComponentId());
       event.reply("I don't know that action :/").queue();
       return;
+    } else if (!event.getComponentId().substring("update-".length()).equals(String.valueOf(lastUpdates.hashCode()))) {
+      LOGGER.info("Unknown updates for id {}", event.getComponentId());
+      event.reply("Sorry, updating is only supported for the latest notification").queue();
+      return;
     }
+
     InteractionHook hook = event.editComponents(ActionRow.of(
       event.getButton().asDisabled().withLabel("Executing...")
     )).complete();
 
+    List<LighthouseContainerUpdate> updates;
+
+    if (selectedUpdates != null) {
+      updates = lastUpdates.stream().filter(update -> selectedUpdates.contains(update.names().get(0))).toList();
+    } else {
+      updates = lastUpdates;
+    }
+
     CompletableFuture.runAsync(() -> {
         try {
           updater.rebuildContainers(
-            lastUpdates,
+            updates,
             label -> hook.editOriginalComponents(ActionRow.of(
               event.getButton().asDisabled()
                 .withLabel(label)
@@ -68,5 +86,12 @@ public class DiscordBotUpdateListener extends ListenerAdapter implements UpdateL
 
         return null;
       });
+  }
+
+  @Override
+  public void onStringSelectInteraction(StringSelectInteractionEvent event) {
+    LOGGER.info("Received string select interaction: {}", event.getComponentId());
+    selectedUpdates = new ArrayList<>(event.getValues());
+    event.deferEdit().queue();
   }
 }
