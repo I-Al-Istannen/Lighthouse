@@ -83,7 +83,7 @@ public class DiscordBotUpdateListener extends ListenerAdapter implements UpdateL
         LOGGER.warn("Error while updating all", throwable);
         notifier.notify(throwable);
         // Restore button
-        hook.editOriginalComponents(ActionRow.of(event.getButton())).queue();
+        hook.editOriginalComponents(event.getMessage().getComponents()).queue();
 
         return null;
       });
