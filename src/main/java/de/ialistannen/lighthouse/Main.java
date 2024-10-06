@@ -5,7 +5,6 @@ import com.cronutils.model.CronType;
 import com.cronutils.model.definition.CronDefinitionBuilder;
 import com.cronutils.parser.CronParser;
 import com.github.dockerjava.api.DockerClient;
-import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import de.ialistannen.lighthouse.auth.DockerRegistryAuth;
@@ -51,7 +50,7 @@ public class Main {
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
   public static void main(String[] args) throws IOException, URISyntaxException, InterruptedException {
-    CliArguments arguments = new CliArgumentsParser().parseOrExit(args);
+    CliArguments arguments = CliArgumentsParser.parseOrExit(args);
     String cronTimesString = arguments.checkTimes().orElse("23 08 * * *");
     Cron cronTime = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(CronType.UNIX))
       .parse(cronTimesString)
@@ -113,21 +112,22 @@ public class Main {
   }
 
   private static void verifyLighthouseInstanceCount(DockerClient dockerClient) {
-    int foundLighthouseCount = 0;
-    for (Container container : dockerClient.listContainersCmd().exec()) {
-      foundLighthouseCount += LighthouseDetector.isLighthouse(container) ? 1 : 0;
-    }
+    long foundLighthouseCount = dockerClient.listContainersCmd().exec().stream()
+      .filter(LighthouseDetector::isLighthouse)
+      .count();
+
     if (foundLighthouseCount == 0) {
       LOGGER.warn(
-        "Label '" + LighthouseDetector.LIGHTHOUSE_ID_LABEL + "' not set! "
-          + "Unable to identify own container. Can not update lighthouse last."
+        "Label '{}' not set! Unable to identify own container. Can not update lighthouse last.",
+        LighthouseDetector.LIGHTHOUSE_ID_LABEL
       );
     }
     if (foundLighthouseCount > 1) {
       LOGGER.warn(
-        "Found " + foundLighthouseCount + " containers with the '" + LighthouseDetector.LIGHTHOUSE_ID_LABEL
-          + "' label. "
-          + "Running multiple instances should mostly work, but you are sailing *pretty close* to some nasty cliffs."
+        "Found {} containers with the '{}' label. "
+        + "Running multiple instances should mostly work, but you are sailing *pretty close* to some nasty cliffs.",
+        LighthouseDetector.LIGHTHOUSE_ID_LABEL,
+        foundLighthouseCount
       );
     }
   }
@@ -149,7 +149,6 @@ public class Main {
     HttpClient httpClient,
     JDA jda
   ) throws URISyntaxException {
-
     if (arguments.useWebhookNotifier()) {
       if (arguments.ntfy()) {
         return new NtfyNotifier(

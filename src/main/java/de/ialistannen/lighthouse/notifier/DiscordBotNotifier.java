@@ -17,6 +17,8 @@ import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
+import net.dv8tion.jda.api.interactions.components.selections.SelectOption;
+import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,7 +104,7 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
       );
     }
 
-    sendActionButtons();
+    sendActionRows(updates);
   }
 
   private EmbedBuilder buildEmbed(LighthouseContainerUpdate update) {
@@ -167,13 +169,36 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
     );
   }
 
-  private void sendActionButtons() {
+  private void sendActionRows(List<LighthouseContainerUpdate> updates) {
     MessageCreateBuilder messageBuilder = new MessageCreateBuilder().setContent("\u00A0");
 
-    messageBuilder.setActionRow(
-      Button.of(ButtonStyle.PRIMARY, "update-all", "Update all!", Emoji.fromUnicode("🚀"))
+    messageBuilder.addActionRow(
+      StringSelectMenu.create("image-select-" + updates.hashCode())
+        .setMinValues(1)
+        .setMaxValues(25)
+        .addOptions(
+          updates.stream()
+            .map(DiscordBotNotifier::containerUpdateToSelectOption)
+            .toList()
+        )
+        .build()
     );
+    messageBuilder.addActionRow(Button.of(
+      ButtonStyle.PRIMARY,
+      "update-" + updates.hashCode(),
+      "Update selected!",
+      Emoji.fromUnicode("🚀")
+    ));
 
     channel.sendMessage(messageBuilder.build()).queue();
   }
+
+  private static SelectOption containerUpdateToSelectOption(LighthouseContainerUpdate update) {
+    String containerName = update.names().get(0);
+
+    return SelectOption.of(containerName, containerName)
+      .withDescription(update.imageUpdate().imageIdentifier().nameWithTag())
+      .withDefault(true);
+  }
+
 }

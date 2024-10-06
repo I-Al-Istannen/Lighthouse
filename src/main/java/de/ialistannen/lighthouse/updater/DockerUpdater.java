@@ -98,15 +98,17 @@ public class DockerUpdater {
       if (lighthouseUpdates.size() > 1) {
         LOGGER.warn(
           "Multiple lighthouse instances detected. "
-            + "Your use-case might be interesting to hear :) "
-            + "~~Objects~~ *cliffs* in your mirror are closer than they appear..."
+          + "Your use-case might be interesting to hear :) "
+          + "~~Objects~~ *cliffs* in your mirror are closer than they appear..."
         );
       }
       callRebuildScript(lighthouseUpdates.stream().flatMap(it -> it.names().stream()).toList());
     }
   }
 
-  private void callRebuildScript(List<String> command) {
+  private void callRebuildScript(List<String> command) throws InterruptedException {
+    pullUpdaterImageIfNecessary();
+
     CreateContainerResponse containerResponse = client.createContainerCmd(updaterDockerImage)
       .withLabels(Map.of("lighthouse-builder-container", "true"))
       .withHostConfig(HostConfig.newHostConfig().withBinds(updaterMounts).withAutoRemove(true))
@@ -141,6 +143,22 @@ public class DockerUpdater {
     } catch (DockerClientException | IOException e) {
       LOGGER.info("Wait operation failed, updater status unknown", e);
       throw new RebuildFailedException("Waiting for rebuild script failed", e);
+    }
+  }
+
+  private void pullUpdaterImageIfNecessary() throws InterruptedException {
+    String updaterImageWithTag = updaterDockerImage.contains(":") ? updaterDockerImage : updaterDockerImage + ":latest";
+    boolean needsToPullUpdater = client.listImagesCmd()
+      .withReferenceFilter(updaterImageWithTag)
+      .exec()
+      .isEmpty();
+
+    if (needsToPullUpdater) {
+      LOGGER.info("Updater image not present locally, pulling");
+      client.pullImageCmd(updaterImageWithTag.split(":")[0])
+        .withTag(updaterImageWithTag.split(":")[1])
+        .exec(new PullImageResultCallback())
+        .awaitCompletion(5, TimeUnit.MINUTES);
     }
   }
 

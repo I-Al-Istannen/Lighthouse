@@ -77,7 +77,7 @@ public class NtfyNotifier implements Notifier {
     try {
       Thread.sleep(2000);
     } catch (InterruptedException e) {
-      // Update notifications should be send after image notifications, how long delayed is not important
+      // Update notifications should be sent after image notifications, how long delayed is not important
       LOGGER.debug("Interrupted while waiting for update notifications to be sent", e);
     }
     send(buildUpdateRequest(updates.size()));
