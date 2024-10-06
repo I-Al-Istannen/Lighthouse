@@ -183,7 +183,7 @@ public class ImageUpdateChecker {
           localBaseImage
         ));
       } catch (Exception e) {
-        LOGGER.warn("Failed to fetch remote info for " + Arrays.toString(container.getNames()), e);
+        LOGGER.warn("Failed to fetch remote info for {}", Arrays.toString(container.getNames()), e);
         notifier.notify(e);
       }
     }

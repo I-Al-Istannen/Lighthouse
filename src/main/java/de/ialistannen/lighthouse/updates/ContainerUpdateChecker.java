@@ -56,7 +56,10 @@ public class ContainerUpdateChecker {
 
     Map<String, LighthouseImageUpdate> imageMap = imageUpdates.stream().collect(Collectors.toMap(
       LighthouseImageUpdate::sourceImageId,
-      it -> it
+      it -> it,
+      // merge is necessary when there are multiple running instances. In those cases an image might be present
+      // twice (potentially with differing tags). Just pick one of them for now.
+      (a, b) -> a
     ));
 
     for (Container container : client.listContainersCmd().withShowAll(true).exec()) {
