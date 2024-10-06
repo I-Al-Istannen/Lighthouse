@@ -50,7 +50,7 @@ public class Main {
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
   public static void main(String[] args) throws IOException, URISyntaxException, InterruptedException {
-    CliArguments arguments = new CliArgumentsParser().parseOrExit(args);
+    CliArguments arguments = CliArgumentsParser.parseOrExit(args);
     String cronTimesString = arguments.checkTimes().orElse("23 08 * * *");
     Cron cronTime = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(CronType.UNIX))
       .parse(cronTimesString)
