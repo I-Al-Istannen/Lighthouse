@@ -39,14 +39,15 @@ public class DiscordBotUpdateListener extends ListenerAdapter implements UpdateL
 
   @Override
   public void onButtonInteraction(ButtonInteractionEvent event) {
-    LOGGER.info("Received button interaction: {}", event.getComponentId());
+    String buttonId = event.getComponentId();
+    LOGGER.info("Received button interaction: {}", buttonId);
 
-    if (!event.getComponentId().startsWith("update-")) {
-      LOGGER.info("Unknown component id {}", event.getComponentId());
+    if (!buttonId.startsWith("update-")) {
+      LOGGER.info("Unknown component id {}", buttonId);
       event.reply("I don't know that action :/").queue();
       return;
-    } else if (!event.getComponentId().substring("update-".length()).equals(String.valueOf(lastUpdates.hashCode()))) {
-      LOGGER.info("Unknown updates for id {}", event.getComponentId());
+    } else if (!buttonId.substring("update-".length()).equals(String.valueOf(lastUpdates.hashCode()))) {
+      LOGGER.info("Unknown updates for id {}", buttonId);
       event.reply("Sorry, updating is only supported for the latest notification").queue();
       return;
     }
@@ -96,7 +97,9 @@ public class DiscordBotUpdateListener extends ListenerAdapter implements UpdateL
       LOGGER.info("Unknown component id {}", event.getComponentId());
       event.reply("I don't know that action :/").queue();
       return;
-    } else if (!event.getComponentId().substring("image-select-".length()).equals(String.valueOf(lastUpdates.hashCode()))) {
+    } else if (!event.getComponentId()
+      .substring("image-select-".length())
+      .equals(String.valueOf(lastUpdates.hashCode()))) {
       LOGGER.info("Unknown updates for id {}", event.getComponentId());
       event.reply("Sorry, selecting containers and updating is only supported for the latest notification").queue();
       return;

@@ -174,18 +174,31 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
 
     messageBuilder.addActionRow(
       StringSelectMenu.create("image-select-" + updates.hashCode())
-          .setMinValues(1)
-          .setMaxValues(25)
-          .addOptions(updates.stream()
-            .map(update -> SelectOption.of(update.names().get(0), update.names().get(0)).withDescription(update.imageUpdate().imageIdentifier().nameWithTag()).withDefault(true))
+        .setMinValues(1)
+        .setMaxValues(25)
+        .addOptions(
+          updates.stream()
+            .map(DiscordBotNotifier::containerUpdateToSelectOption)
             .toList()
-          )
-          .build()
+        )
+        .build()
     );
-    messageBuilder.addActionRow(
-      Button.of(ButtonStyle.PRIMARY, "update-" + updates.hashCode(), "Update selected!", Emoji.fromUnicode("🚀"))
-    );
+    messageBuilder.addActionRow(Button.of(
+      ButtonStyle.PRIMARY,
+      "update-" + updates.hashCode(),
+      "Update selected!",
+      Emoji.fromUnicode("🚀")
+    ));
 
     channel.sendMessage(messageBuilder.build()).queue();
   }
+
+  private static SelectOption containerUpdateToSelectOption(LighthouseContainerUpdate update) {
+    String containerName = update.names().get(0);
+
+    return SelectOption.of(containerName, containerName)
+      .withDescription(update.imageUpdate().imageIdentifier().nameWithTag())
+      .withDefault(true);
+  }
+
 }

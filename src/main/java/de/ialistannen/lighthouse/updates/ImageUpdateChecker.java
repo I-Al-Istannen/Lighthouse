@@ -81,13 +81,13 @@ public class ImageUpdateChecker {
    * @throws DigestFetchException if the remote denied serving the digest
    * @throws TokenFetchException if the auth token could not be retrieved
    */
-  public List<LighthouseImageUpdate> check() throws IOException, URISyntaxException, InterruptedException {
-    List<LighthouseImageUpdate> updates = new ArrayList<>(checkBaseTaggedContainers());
+  public Collection<LighthouseImageUpdate> check() throws IOException, URISyntaxException, InterruptedException {
+    Set<LighthouseImageUpdate> updates = new HashSet<>(checkBaseTaggedContainers());
     updates.addAll(checkBasicContainers());
     return updates;
   }
 
-  private List<LighthouseImageUpdate> checkBasicContainers()
+  private Collection<LighthouseImageUpdate> checkBasicContainers()
     throws IOException, URISyntaxException, InterruptedException {
     List<LighthouseImageUpdate> updates = new ArrayList<>();
 
@@ -155,13 +155,14 @@ public class ImageUpdateChecker {
   }
 
   private Collection<ContainerWithRemoteInfo> getContainersWithRemoteInfo(
-    Collection<ContainerWithBase> participatingContainers
+    Collection<ContainerWithBase> containers
   ) {
-    Collection<ContainerWithRemoteInfo> foo = new HashSet<>();
-    for (ContainerWithBase withBase : participatingContainers) {
+    Collection<ContainerWithRemoteInfo> result = new HashSet<>();
+
+    for (ContainerWithBase withBase : containers) {
       Container container = withBase.container();
       if (container.getImageId() == null) {
-        LOGGER.warn("Container '{}' has no image id", (Object) container.getNames());
+        LOGGER.warn("Container '{}' has no image id", Arrays.toString(container.getNames()));
         continue;
       }
 
@@ -176,7 +177,7 @@ public class ImageUpdateChecker {
       try {
         String remoteDigest = dockerRegistry.getDigest(withBase.baseImage().image(), withBase.baseImage().tag());
         InspectImageResponse localBaseImage = client.inspectImageCmd(container.getImageId()).exec();
-        foo.add(new ContainerWithRemoteInfo(
+        result.add(new ContainerWithRemoteInfo(
           withBase,
           remoteDigest,
           inspect,
@@ -188,7 +189,7 @@ public class ImageUpdateChecker {
       }
     }
 
-    return foo;
+    return result;
   }
 
   private void pullUnknownBaseImages(Collection<ContainerWithBase> participatingContainers)
@@ -282,7 +283,7 @@ public class ImageUpdateChecker {
     }
     InspectImageResponse imageResponse = client.inspectImageCmd(container.getImage()).exec();
     if (imageResponse.getRepoTags() == null || imageResponse.getRepoTags().isEmpty()) {
-      LOGGER.info(
+      LOGGER.warn(
         "Enrolled container '{}' has an unlabeled image and no 'lighthouse.base' tag",
         (Object) container.getNames()
       );

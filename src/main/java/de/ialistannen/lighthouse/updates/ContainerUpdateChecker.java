@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -51,13 +52,13 @@ public class ContainerUpdateChecker {
    * @see ImageUpdateChecker#check()
    */
   public List<LighthouseContainerUpdate> check() throws IOException, URISyntaxException, InterruptedException {
-    List<LighthouseImageUpdate> imageUpdates = imageUpdateChecker.check();
+    Collection<LighthouseImageUpdate> imageUpdates = imageUpdateChecker.check();
     List<LighthouseContainerUpdate> updates = new ArrayList<>();
 
     Map<String, LighthouseImageUpdate> imageMap = imageUpdates.stream().collect(Collectors.toMap(
       LighthouseImageUpdate::sourceImageId,
       it -> it,
-      // merge is necessary when there are multiple running instances. In those cases an image might be present
+      // Merge is necessary when there are multiple running instances. In those cases an image might be present
       // twice (potentially with differing tags). Just pick one of them for now.
       (a, b) -> a
     ));
