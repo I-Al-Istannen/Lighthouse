@@ -79,7 +79,7 @@ public class DockerUpdater {
       .flatMap(Collection::stream)
       .distinct()
       .collect(Collectors.toCollection(ArrayList::new));
-    command.add(0, updaterEntrypoint);
+    command.addFirst(updaterEntrypoint);
 
     callRebuildScript(command);
 
@@ -102,7 +102,11 @@ public class DockerUpdater {
           + "~~Objects~~ *cliffs* in your mirror are closer than they appear..."
         );
       }
-      callRebuildScript(lighthouseUpdates.stream().flatMap(it -> it.names().stream()).toList());
+      List<String> updateCommand = lighthouseUpdates.stream()
+        .flatMap(it -> it.names().stream())
+        .collect(Collectors.toCollection(ArrayList::new));
+      updateCommand.addFirst(updaterEntrypoint);
+      callRebuildScript(updateCommand);
     }
   }
 
