@@ -48,11 +48,13 @@ public class DockerLibraryHelper {
    */
   public String normalizeImageName(String image) {
     String result = image;
-    if (isLibraryImage(image)) {
-      result = "library/" + result;
+    if (isLibraryImage(result)) {
+      // Strip the registry prefix if there is one
+      result = "library/" + stripRegistryPrefix(result);
     }
 
-    if (!image.matches("(.+\\..+/).+")) {
+    // If we do not have a registry prefix, add one. The default registry is docker.io
+    if (!hasRegistryPrefix(result)) {
       result = "docker.io/" + result;
     }
 
@@ -61,6 +63,18 @@ public class DockerLibraryHelper {
     }
 
     return result;
+  }
+
+  private static boolean hasRegistryPrefix(String image) {
+    return image.matches("(.+\\..+/).+");
+  }
+
+  private static String stripRegistryPrefix(String image) {
+    if (hasRegistryPrefix(image)) {
+      return image.substring(image.indexOf('/') + 1);
+    }
+
+    return image;
   }
 
   /**

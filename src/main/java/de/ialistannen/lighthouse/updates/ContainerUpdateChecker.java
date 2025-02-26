@@ -63,6 +63,9 @@ public class ContainerUpdateChecker {
       (a, b) -> a
     ));
 
+    LOGGER.info("Found image updates {}", imageUpdates);
+    LOGGER.info("Found image map {}", imageMap);
+
     for (Container container : client.listContainersCmd().withShowAll(true).exec()) {
       if (!imageMap.containsKey(container.getImageId())) {
         if (enrollmentMode.isParticipating(container)) {

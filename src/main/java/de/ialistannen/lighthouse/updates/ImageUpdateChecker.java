@@ -93,7 +93,18 @@ public class ImageUpdateChecker {
 
     for (ContainerWithRemoteInfo info : getContainersWithRemoteInfo(getParticipatingBasicContainers())) {
       if (info.baseImageOutdated()) {
+        LOGGER.info(
+          "Base image '{}' for {} is out of date",
+          info.containerImage().getRepoTags(),
+          info.container().container().getNames()
+        );
         updates.add(info.toUpdate(metadataFetcher));
+      } else {
+        LOGGER.info(
+          "Base image '{}' for {} is up to date",
+          info.containerImage().getRepoTags(),
+          info.container().container().getNames()
+        );
       }
     }
 
@@ -281,7 +292,9 @@ public class ImageUpdateChecker {
         )
       );
     }
+    LOGGER.info("Looking at base image for '{}' ({})", container.getNames(), container.getImage());
     InspectImageResponse imageResponse = client.inspectImageCmd(container.getImage()).exec();
+    LOGGER.info("Found base image for '{}': {}", container.getNames(), imageResponse.getRepoTags());
     if (imageResponse.getRepoTags() == null || imageResponse.getRepoTags().isEmpty()) {
       LOGGER.warn(
         "Enrolled container '{}' has an unlabeled image and no 'lighthouse.base' tag",

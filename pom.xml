@@ -69,7 +69,7 @@
             </platforms>
           </from>
           <to>
-            <image>ghcr.io/i-al-istannen/lighthouse:latest</image>
+            <image>ghcr.io/i-al-istannen/lighthouse:pine</image>
           </to>
           <container>
             <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
