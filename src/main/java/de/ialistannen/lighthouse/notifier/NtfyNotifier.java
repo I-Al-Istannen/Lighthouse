@@ -121,7 +121,7 @@ public class NtfyNotifier implements Notifier {
       .header("X-Icon", LIGHTHOUSE_LOGO)
       .header("X-Actions", "http, "
           + "Update, "
-          + url.toString() + ", "
+          + url + ", "
           + "headers.X-Title=Lighthouse Update" + hostname.map(h -> " (" + h + ")").orElse("") + ", "
           + "headers.X-Tags=page_facing_up, "
           + "headers.X-Icon=" + LIGHTHOUSE_LOGO + ", "

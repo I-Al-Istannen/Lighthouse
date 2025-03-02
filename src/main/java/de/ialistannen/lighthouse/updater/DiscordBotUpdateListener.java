@@ -59,7 +59,7 @@ public class DiscordBotUpdateListener extends ListenerAdapter implements UpdateL
     List<LighthouseContainerUpdate> updates;
 
     if (selectedUpdates != null) {
-      updates = lastUpdates.stream().filter(update -> selectedUpdates.contains(update.names().get(0))).toList();
+      updates = lastUpdates.stream().filter(update -> selectedUpdates.contains(update.names().getFirst())).toList();
     } else {
       updates = lastUpdates;
     }

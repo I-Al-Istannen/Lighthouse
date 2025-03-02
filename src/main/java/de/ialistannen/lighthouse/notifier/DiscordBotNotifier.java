@@ -194,7 +194,7 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
   }
 
   private static SelectOption containerUpdateToSelectOption(LighthouseContainerUpdate update) {
-    String containerName = update.names().get(0);
+    String containerName = update.names().getFirst();
 
     return SelectOption.of(containerName, containerName)
       .withDescription(update.imageUpdate().imageIdentifier().nameWithTag())
