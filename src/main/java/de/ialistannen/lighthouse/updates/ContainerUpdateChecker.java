@@ -60,8 +60,11 @@ public class ContainerUpdateChecker {
       it -> it,
       // Merge is necessary when there are multiple running instances. In those cases an image might be present
       // twice (potentially with differing tags). Just pick one of them for now.
-      (a, b) -> a
+      (a, _) -> a
     ));
+
+    LOGGER.info("Found image updates {}", imageUpdates);
+    LOGGER.debug("Found image map {}", imageMap);
 
     for (Container container : client.listContainersCmd().withShowAll(true).exec()) {
       if (!imageMap.containsKey(container.getImageId())) {

@@ -70,7 +70,7 @@ public class ImageUpdateChecker {
    * <ol>
    *   <li>loop over all containers<li>
    *   <li>check for the presence of the correct label</li>
-   *   <li>check if their base image is up-to-date and updating it if necessary</li>
+   *   <li>check if their base image is up to date and updating it if necessary</li>
    *   <li>check if the container uses the up-to-date base image</li>
    * </ol>
    *
@@ -93,7 +93,18 @@ public class ImageUpdateChecker {
 
     for (ContainerWithRemoteInfo info : getContainersWithRemoteInfo(getParticipatingBasicContainers())) {
       if (info.baseImageOutdated()) {
+        LOGGER.info(
+          "Base image '{}' for {} is out of date",
+          info.containerImage().getRepoTags(),
+          info.container().container().getNames()
+        );
         updates.add(info.toUpdate(metadataFetcher));
+      } else {
+        LOGGER.info(
+          "Base image '{}' for {} is up to date",
+          info.containerImage().getRepoTags(),
+          info.container().container().getNames()
+        );
       }
     }
 
@@ -253,7 +264,7 @@ public class ImageUpdateChecker {
       .collect(Collectors.toMap(
         withBase -> withBase.container().getImageId(),
         withBase -> withBase,
-        (a, b) -> a
+        (a, _) -> a
       )).values();
   }
 
@@ -268,7 +279,7 @@ public class ImageUpdateChecker {
       .collect(Collectors.toMap(
         withBase -> withBase.container().getImageId(),
         withBase -> withBase,
-        (a, b) -> a
+        (a, _) -> a
       )).values();
   }
 
@@ -281,7 +292,9 @@ public class ImageUpdateChecker {
         )
       );
     }
+    LOGGER.debug("Looking at base image for '{}' ({})", container.getNames(), container.getImage());
     InspectImageResponse imageResponse = client.inspectImageCmd(container.getImage()).exec();
+    LOGGER.debug("Found base image for '{}': {}", container.getNames(), imageResponse.getRepoTags());
     if (imageResponse.getRepoTags() == null || imageResponse.getRepoTags().isEmpty()) {
       LOGGER.warn(
         "Enrolled container '{}' has an unlabeled image and no 'lighthouse.base' tag",
@@ -289,7 +302,7 @@ public class ImageUpdateChecker {
       );
       return Optional.empty();
     }
-    String repoTag = imageResponse.getRepoTags().get(0);
+    String repoTag = imageResponse.getRepoTags().getFirst();
     ImageIdentifier baseImage = ImageIdentifier.fromString(repoTag).friendly(libraryHelper);
 
     return Optional.of(new ContainerWithBase(container, baseImage));
