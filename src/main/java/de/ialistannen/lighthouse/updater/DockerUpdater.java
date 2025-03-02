@@ -9,6 +9,7 @@ import com.github.dockerjava.api.exception.DockerClientException;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.HostConfig;
+import com.github.dockerjava.api.model.StreamType;
 import com.github.dockerjava.api.model.Volume;
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
@@ -128,7 +129,11 @@ public class DockerUpdater {
       .exec(new Adapter<>() {
         @Override
         public void onNext(Frame object) {
-          LOGGER.info("[updater] {}", new String(object.getPayload(), StandardCharsets.UTF_8));
+          if (object.getStreamType() == StreamType.STDERR) {
+            LOGGER.warn("[updater] {}", new String(object.getPayload(), StandardCharsets.UTF_8));
+          } else {
+            LOGGER.info("[updater] {}", new String(object.getPayload(), StandardCharsets.UTF_8));
+          }
         }
       });
 
