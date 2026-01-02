@@ -2,7 +2,7 @@ name: Build Docker image
 on:
   push:
     branches:
-      - master
+      - feat/image-tag-updates
 
 jobs:
   docker:
