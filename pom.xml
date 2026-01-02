@@ -11,8 +11,8 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jbock.version>5.19</jbock.version>
-    <logback.version>1.5.17</logback.version>
-    <jackson.version>2.18.3</jackson.version>
+    <logback.version>1.5.23</logback.version>
+    <jackson.version>2.20.1</jackson.version>
   </properties>
 
   <build>
@@ -20,7 +20,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.14.0</version>
+        <version>3.14.1</version>
         <configuration>
           <release>23</release>
           <annotationProcessorPaths>
@@ -35,7 +35,7 @@
 
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>3.6.0</version>
+        <version>3.6.1</version>
         <executions>
           <execution>
             <id>shade</id>
@@ -86,7 +86,7 @@
     <dependency>
       <groupId>com.github.docker-java</groupId>
       <artifactId>docker-java</artifactId>
-      <version>3.4.1</version>
+      <version>3.7.0</version>
     </dependency>
 
     <dependency>
@@ -104,7 +104,7 @@
     <dependency>
       <groupId>com.github.ben-manes.caffeine</groupId>
       <artifactId>caffeine</artifactId>
-      <version>3.2.0</version>
+      <version>3.2.3</version>
     </dependency>
 
     <dependency>
@@ -140,7 +140,7 @@
     <dependency>
       <groupId>net.dv8tion</groupId>
       <artifactId>JDA</artifactId>
-      <version>5.3.0</version>
+      <version>6.2.1</version>
     </dependency>
 
   </dependencies>

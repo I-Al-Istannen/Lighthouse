@@ -9,16 +9,17 @@ import java.util.List;
 import java.util.Optional;
 import javax.security.auth.login.LoginException;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.components.actionrow.ActionRow;
+import net.dv8tion.jda.api.components.buttons.Button;
+import net.dv8tion.jda.api.components.buttons.ButtonStyle;
+import net.dv8tion.jda.api.components.selections.SelectOption;
+import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
-import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
-import net.dv8tion.jda.api.interactions.components.selections.SelectOption;
-import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -172,7 +173,7 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
   private void sendActionRows(List<LighthouseContainerUpdate> updates) {
     MessageCreateBuilder messageBuilder = new MessageCreateBuilder().setContent("\u00A0");
 
-    messageBuilder.addActionRow(
+    messageBuilder.addComponents(ActionRow.of(
       StringSelectMenu.create("image-select-" + updates.hashCode())
         .setMinValues(1)
         .setMaxValues(25)
@@ -182,13 +183,13 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
             .toList()
         )
         .build()
-    );
-    messageBuilder.addActionRow(Button.of(
+    ));
+    messageBuilder.addComponents(ActionRow.of(Button.of(
       ButtonStyle.PRIMARY,
       "update-" + updates.hashCode(),
       "Update selected!",
       Emoji.fromUnicode("🚀")
-    ));
+    )));
 
     channel.sendMessage(messageBuilder.build()).queue();
   }
