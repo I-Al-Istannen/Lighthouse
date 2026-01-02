@@ -1,6 +1,7 @@
 package de.ialistannen.lighthouse.updates;
 
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
+import de.ialistannen.lighthouse.model.LighthouseTagUpdate;
 import java.util.List;
 
 /**
@@ -16,6 +17,8 @@ public interface UpdateFilter {
    * @throws FilterException if any error occurs
    */
   List<LighthouseContainerUpdate> filter(List<LighthouseContainerUpdate> updates) throws FilterException;
+
+  List<LighthouseTagUpdate> filterTags(List<LighthouseTagUpdate> updates) throws FilterException;
 
   /**
    * Commits any new state that might have been computed after {@link #filter(List)}.

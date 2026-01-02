@@ -11,24 +11,31 @@ import de.ialistannen.lighthouse.model.BaseImageUpdateStrategy;
 import de.ialistannen.lighthouse.model.EnrollmentMode;
 import de.ialistannen.lighthouse.model.ImageIdentifier;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
+import de.ialistannen.lighthouse.model.LighthouseTagUpdate;
 import de.ialistannen.lighthouse.notifier.Notifier;
 import de.ialistannen.lighthouse.registry.DigestFetchException;
 import de.ialistannen.lighthouse.registry.DockerLibraryHelper;
 import de.ialistannen.lighthouse.registry.DockerRegistry;
 import de.ialistannen.lighthouse.registry.TokenFetchException;
+import de.ialistannen.lighthouse.versioning.VersionParser;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.semver4j.Semver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,6 +91,120 @@ public class ImageUpdateChecker {
   public Collection<LighthouseImageUpdate> check() throws IOException, URISyntaxException, InterruptedException {
     Set<LighthouseImageUpdate> updates = new HashSet<>(checkBaseTaggedContainers());
     updates.addAll(checkBasicContainers());
+    return updates;
+  }
+
+  public List<LighthouseTagUpdate> checkTags() throws IOException, URISyntaxException, InterruptedException {
+    LOGGER.info("Checking for tag updates...");
+    Set<ContainerWithBase> containers = new HashSet<>(getParticipatingBaseTaggedContainers());
+    containers.addAll(getParticipatingBasicContainers());
+
+    List<LighthouseTagUpdate> updates = new ArrayList<>();
+
+    Map<String, List<String>> tagsPerImage = new HashMap<>();
+
+    for (var info : containers) {
+      String strategyString = info.container().getLabels().get("lighthouse.tag-check.strategy");
+      if (strategyString == null) {
+        LOGGER.debug("No tag check strategy for container '{}'", Arrays.toString(info.container().getNames()));
+        continue;
+      }
+      VersionParser versionParser;
+      try {
+        versionParser = VersionParser.fromString(strategyString);
+      } catch (IllegalArgumentException e) {
+        LOGGER.warn(
+          "Container '{}' has an invalid tag check strategy '{}'",
+          Arrays.toString(info.container().getNames()),
+          strategyString,
+          e
+        );
+        continue;
+      }
+
+      LOGGER.debug("Checking tags for container '{}'", Arrays.toString(info.container().getNames()));
+      String tag = info.baseImage().tag();
+      Semver containerVersion;
+      try {
+        containerVersion = versionParser.parse(tag);
+      } catch (IllegalArgumentException e) {
+        LOGGER.warn(
+          "Container '{}' has a tag '{}' that could not be parsed with strategy '{}'",
+          Arrays.toString(info.container().getNames()),
+          tag,
+          strategyString,
+          e
+        );
+        continue;
+      }
+
+      if (!tagsPerImage.containsKey(info.baseImage().image())) {
+        String image = info.baseImage().image();
+        try {
+          List<String> tags = dockerRegistry.getTags(image);
+          tagsPerImage.put(image, tags);
+        } catch (Exception e) {
+          LOGGER.warn("Failed to fetch tags for image '{}'", image, e);
+          tagsPerImage.put(image, List.of());
+        }
+      }
+
+      List<String> availableTags = new ArrayList<>(tagsPerImage.getOrDefault(info.baseImage().image(), List.of()));
+      LOGGER.debug("Found tags {} for image '{}'", availableTags, info.baseImage().image());
+
+      String keepRegex = info.container().getLabels().get("lighthouse.tag-check.keep");
+      if (keepRegex != null) {
+        availableTags.removeIf(it -> !it.matches(keepRegex));
+      }
+      String ignoreRegex = info.container().getLabels().get("lighthouse.tag-check.ignore");
+      if (ignoreRegex != null) {
+        availableTags.removeIf(it -> it.matches(ignoreRegex));
+      }
+
+      Optional<Map.Entry<Semver, String>> newestVersion = availableTags.stream()
+        .distinct()
+        .flatMap(it -> {
+          try {
+            return Stream.of(Map.entry(versionParser.parse(it), it));
+          } catch (IllegalArgumentException e) {
+            LOGGER.debug(
+              "Skipping tag '{}' for container '{}' as it could not be parsed with strategy '{}'",
+              it,
+              Arrays.toString(info.container().getNames()),
+              strategyString
+            );
+            return Stream.empty();
+          }
+        })
+        .max(Entry.comparingByKey());
+      if (newestVersion.isEmpty()) {
+        continue;
+      }
+      Entry<Semver, String> newestEntry = newestVersion.orElseThrow();
+
+      if (newestEntry.getKey().isLowerThanOrEqualTo(containerVersion)) {
+        continue;
+      }
+      LOGGER.info(
+        "Container '{}' has a newer tag '{}' (parsed as {}) available for image '{}' (current: '{}')",
+        Arrays.toString(info.container().getNames()),
+        newestEntry.getValue(),
+        newestEntry.getKey(),
+        info.baseImage().image(),
+        tag
+      );
+
+      updates.add(
+        new LighthouseTagUpdate(
+          Arrays.asList(info.container().getNames()),
+          info.baseImage().tag(),
+          newestEntry.getValue(),
+          info.baseImage(),
+          metadataFetcher.fetch(new ImageIdentifier(info.baseImage().image(), newestEntry.getValue()))
+        )
+      );
+    }
+
     return updates;
   }
 

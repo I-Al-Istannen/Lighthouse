@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
+import de.ialistannen.lighthouse.model.LighthouseTagUpdate;
 import de.ialistannen.lighthouse.updates.FilterException;
 import de.ialistannen.lighthouse.updates.UpdateFilter;
 import java.io.IOException;
@@ -31,7 +32,7 @@ public class FileUpdateFilter implements UpdateFilter {
   private UpdateDatabase loadDatabase() throws IOException {
     if (Files.notExists(storagePath)) {
       Files.createDirectories(storagePath.getParent());
-      return new UpdateDatabase(new HashMap<>());
+      return new UpdateDatabase(new HashMap<>(), new HashMap<>());
     }
     return objectMapper.readValue(Files.readString(storagePath), UpdateDatabase.class);
   }
@@ -74,12 +75,49 @@ public class FileUpdateFilter implements UpdateFilter {
           new KnownUpdate(remoteManifest, localImageId, update.imageUpdate().sourceImageNames(), update.names())
         );
       }
-      currentDatabase = new UpdateDatabase(newKnownUpdates);
+      currentDatabase = new UpdateDatabase(newKnownUpdates, currentDatabase.knownTagUpdates());
 
       return filtered;
     } catch (IOException e) {
       throw new FilterException("Failed to load database from " + storagePath, e);
     }
+  }
+
+  @Override
+  public List<LighthouseTagUpdate> filterTags(List<LighthouseTagUpdate> updates) {
+    List<LighthouseTagUpdate> filteredUpdates = updates.stream()
+      .filter(it -> {
+        // Use the remote manifest as key: We want to notify if there is yet another update for our local image!
+        boolean known = currentDatabase.knownTagUpdates().containsKey(it.imageIdentifier().nameWithTag());
+        if (known) {
+          LOGGER.info(
+            "Skipping notify for {} -> {}",
+            it.imageIdentifier().nameWithTag(),
+            it.newTag()
+          );
+          return false;
+        }
+        return true;
+      })
+      .toList();
+
+    Map<String, KnownTagUpdate> newKnownTagUpdates = new HashMap<>(
+      currentDatabase.knownTagUpdates() == null ? Map.of() : currentDatabase.knownTagUpdates()
+    );
+    for (LighthouseTagUpdate update : filteredUpdates) {
+      String imageWithTag = update.imageIdentifier().nameWithTag();
+      newKnownTagUpdates.put(
+        imageWithTag,
+        new KnownTagUpdate(
+          update.imageIdentifier().image(),
+          update.currentTag(),
+          update.newTag()
+        )
+      );
+    }
+    currentDatabase = new UpdateDatabase(currentDatabase.knownUpdates(), newKnownTagUpdates);
+
+    return filteredUpdates;
   }
 
   @Override
@@ -105,7 +143,20 @@ public class FileUpdateFilter implements UpdateFilter {
 
   @JsonSerialize
   @JsonDeserialize
-  record UpdateDatabase(Map<String, KnownUpdate> knownUpdates) {
+  record KnownTagUpdate(
+    String image,
+    String currentTag,
+    String newTag
+  ) {
+
+  }
+
+  @JsonSerialize
+  @JsonDeserialize
+  record UpdateDatabase(
+    Map<String, KnownUpdate> knownUpdates,
+    Map<String, KnownTagUpdate> knownTagUpdates
+  ) {
 
   }
 }

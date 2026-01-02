@@ -10,6 +10,7 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
+import de.ialistannen.lighthouse.model.LighthouseTagUpdate;
 import de.ialistannen.lighthouse.registry.RemoteImageMetadata;
 import java.io.IOException;
 import java.net.URI;
@@ -74,7 +75,7 @@ public class DiscordWebhookNotifier implements Notifier {
     embeds.add(embed);
     payload.set("embeds", embeds);
 
-    sendPayload(payload, List.of());
+    sendPayload(payload, Optional.empty());
   }
 
   @Override
@@ -86,19 +87,46 @@ public class DiscordWebhookNotifier implements Notifier {
 
     for (List<LighthouseContainerUpdate> batch : Lists.partition(updates, 10)) {
       ObjectNode payload = buildPayload(batch);
-      sendPayload(payload, batch);
+      sendPayload(
+        payload,
+        mention.map(mention -> DiscordNotifierHelper.getExpandedMentionText(
+          mention,
+          mentionText,
+          batch
+        ))
+      );
     }
   }
 
-  private void sendPayload(ObjectNode payload, List<LighthouseContainerUpdate> updates) {
+  @Override
+  public void notifyTags(List<LighthouseTagUpdate> tagUpdates) {
+    if (tagUpdates.isEmpty()) {
+      return;
+    }
+    LOGGER.info("Notifying for {} tag update(s) in discord", tagUpdates.size());
+
+    for (List<LighthouseTagUpdate> batch : Lists.partition(tagUpdates, 10)) {
+      ObjectNode payload = buildTagUpdatePayload(batch);
+      sendPayload(
+        payload,
+        mention.map(mention -> DiscordNotifierHelper.getExpandedMentionTextForTagUpdates(
+          mention,
+          mentionText,
+          tagUpdates
+        ))
+      );
+    }
+  }
+
+  private void sendPayload(ObjectNode payload, Optional<String> content) {
     try {
       payload.set(
         "avatar_url",
         new TextNode("https://github.com/I-Al-Istannen/Lighthouse/blob/master/media/lighthouse.png?raw=true")
       );
-      mention.ifPresent(mention -> payload.set(
+      content.ifPresent(it -> payload.set(
         "content",
-        new TextNode(DiscordNotifierHelper.getExpandedMentionText(mention, mentionText, updates))
+        new TextNode(it)
       ));
       payload.set("username", new TextNode("Lighthouse" + hostname.map(it -> " (" + it + ")").orElse("")));
 
@@ -112,9 +140,11 @@ public class DiscordWebhookNotifier implements Notifier {
       HttpResponse<String> response = httpClient.send(request, BodyHandlers.ofString());
       if (response.statusCode() != 200 && response.statusCode() != 204) {
         LOGGER.warn("Failed to notify (HTTP {}): {}", response.statusCode(), response.body());
+        throw new RuntimeException("Failed to notify (HTTP " + response.statusCode() + "): " + response.body());
       }
     } catch (IOException | InterruptedException e) {
       LOGGER.warn("Failed to notify!", e);
+      throw new RuntimeException("Failed to notify!", e);
     }
   }
 
@@ -208,4 +238,77 @@ public class DiscordWebhookNotifier implements Notifier {
     footer.set("text", new TextNode("Made with \u2764\uFE0F"));
     return footer;
   }
+
+  private ObjectNode buildTagUpdatePayload(List<LighthouseTagUpdate> tagUpdates) {
+    ObjectNode payload = objectMapper.createObjectNode();
+    ArrayNode embeds = objectMapper.createArrayNode();
+
+    if (tagUpdates.size() > 10) {
+      throw new IllegalArgumentException("Got more than 10 tag updates!");
+    }
+
+    tagUpdates.stream()
+      .map(this::buildTagUpdateEmbed)
+      .forEach(embeds::add);
+
+    payload.set("embeds", embeds);
+    return payload;
+  }
+
+  private ObjectNode buildTagUpdateEmbed(LighthouseTagUpdate tagUpdate) {
+    ObjectNode embed = objectMapper.createObjectNode();
+    embed.set("title", new TextNode(tagUpdate.imageIdentifier().image()));
+    embed.set(
+      "description",
+      new TextNode("Tag Update found")
+    );
+    embed.set(
+      "url",
+      new TextNode("https://hub.docker.com/r/%s".formatted(tagUpdate.imageIdentifier().image()))
+    );
+    embed.set("color", new IntNode(0x00CED1));
+    embed.set("footer", buildFooter());
+
+    ArrayNode fields = objectMapper.createArrayNode();
+
+    ObjectNode containerNames = objectMapper.createObjectNode();
+    containerNames.set("name", new TextNode("Container names"));
+    containerNames.set("value", new TextNode(String.join(", ", tagUpdate.names())));
+    containerNames.set("inline", BooleanNode.TRUE);
+    fields.add(containerNames);
+
+    ObjectNode currentVersion = objectMapper.createObjectNode();
+    currentVersion.set("name", new TextNode("Current version"));
+    currentVersion.set("value", new TextNode("`" + tagUpdate.currentTag() + "`"));
+    currentVersion.set("inline", BooleanNode.TRUE);
+    fields.add(currentVersion);
+
+    ObjectNode newVersion = objectMapper.createObjectNode();
+    newVersion.set("name", new TextNode("New version"));
+    newVersion.set("value", new TextNode("`" + tagUpdate.newTag() + "`"));
+    newVersion.set("inline", BooleanNode.TRUE);
+    fields.add(newVersion);
+
+    tagUpdate.remoteImageMetadata().ifPresent(metadata -> {
+      ObjectNode updaterInfo = objectMapper.createObjectNode();
+      updaterInfo.set("name", new TextNode("Update information"));
+      updaterInfo.set(
+        "value",
+        new TextNode(
+          "Updated <t:%s:R> by **%s**".formatted(
+            metadata.updateTime().getEpochSecond(),
+            metadata.updatedBy()
+          )
+        )
+      );
+      fields.add(updaterInfo);
+      embed.set("timestamp", new TextNode(metadata.updateTime().toString()));
+    });
+
+    embed.set("fields", fields);
+
+    return embed;
+  }
 }
+
+

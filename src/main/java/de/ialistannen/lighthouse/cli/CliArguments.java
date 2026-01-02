@@ -69,6 +69,12 @@ public interface CliArguments {
   @Option(names = "--ntfy", description = "Use ntfy to send notifications and receive update requests. Default: false")
   boolean ntfy();
 
+  @Option(
+    names = "--check-tag-updates",
+    description = "Enable checking for tag/version updates. Requires 'lighthouse.tag-updates' label on containers. Default: false"
+  )
+  boolean checkTagUpdates();
+
   @Parameter(index = 0, description = "Discord Webhook URL, Discord Bot Token or ntfy Webhook URL", paramLabel = "URL|TOKEN")
   String webhookUrlOrToken();
 

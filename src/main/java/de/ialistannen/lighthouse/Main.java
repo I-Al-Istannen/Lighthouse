@@ -14,6 +14,7 @@ import de.ialistannen.lighthouse.metadata.DockerHubMetadataFetcher;
 import de.ialistannen.lighthouse.model.BaseImageUpdateStrategy;
 import de.ialistannen.lighthouse.model.EnrollmentMode;
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
+import de.ialistannen.lighthouse.model.LighthouseTagUpdate;
 import de.ialistannen.lighthouse.notifier.DiscordBotNotifier;
 import de.ialistannen.lighthouse.notifier.DiscordWebhookNotifier;
 import de.ialistannen.lighthouse.notifier.Notifier;
@@ -97,13 +98,19 @@ public class Main {
       () -> {
         LOGGER.info("Checking for updates...");
         List<LighthouseContainerUpdate> updates = containerUpdateChecker.check();
+        List<LighthouseTagUpdate> tagUpdates = arguments.checkTagUpdates()
+          ? imageUpdateChecker.checkTags()
+          : List.of();
 
         if (!arguments.alwaysNotify()) {
           updates = updateFilter.filter(updates);
+          tagUpdates = updateFilter.filterTags(tagUpdates);
         }
 
         notifier.notify(updates);
         updateListener.onUpdatesFound(updates);
+
+        notifier.notifyTags(tagUpdates);
 
         // AFTER notify was successful!
         updateFilter.commit();

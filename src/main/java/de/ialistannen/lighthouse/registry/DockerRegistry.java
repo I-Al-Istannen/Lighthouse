@@ -2,6 +2,7 @@ package de.ialistannen.lighthouse.registry;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import de.ialistannen.lighthouse.auth.DockerRegistryAuth;
 import java.io.IOException;
@@ -12,6 +13,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -174,6 +176,70 @@ public class DockerRegistry {
       throw new DigestFetchException(image + ":" + tag, response.statusCode());
     }
     return response.headers().firstValue("docker-content-digest").orElseThrow();
+  }
+
+  /**
+   * Fetches the tag list for a given image using the registry v2 API.
+   * <p>
+   * The returned value is the raw JSON response body from the registry's `/v2/{name}/tags/list` endpoint.
+   *
+   * @param image the image to get tags for (may include registry and path)
+   * @return the raw JSON containing the tag list
+   * @throws IOException if an I/O error occurs
+   * @throws InterruptedException if the request is interrupted
+   * @throws URISyntaxException if the image contains invalid characters
+   * @throws TokenFetchException if authentication token retrieval fails
+   */
+  public List<String> getTags(String image)
+    throws IOException, InterruptedException, URISyntaxException {
+    LOGGER.debug("Fetching tags for '{}'", image);
+
+    String imageName = libraryHelper.getImageNameWithoutRegistry(image);
+    String authHeader = getAuthHeader(image);
+    List<String> tags = new ArrayList<>();
+
+    // Try to avoid pagination, even though most registries probably cut it off at 1000 or so
+    URI url = new URI(getRegistryUrl(image) + "/v2/%s/tags/list?n=50000".formatted(imageName));
+
+    boolean more = true;
+    while (more) {
+      HttpRequest request = HttpRequest.newBuilder(url)
+        .header("Authorization", authHeader)
+        .GET()
+        .build();
+
+      HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
+      if (response.statusCode() != 200) {
+        LOGGER.info(
+          "Failed to fetch image tags for '{}' ({}): {}",
+          image,
+          response.statusCode(),
+          response.body()
+        );
+        throw new RuntimeException("Failed to fetch tags for image " + image + ": " + response.statusCode());
+      }
+
+      ObjectNode body = objectMapper.readValue(response.body(), ObjectNode.class);
+      if (!(body.get("tags") instanceof ArrayNode tagsArr)) {
+        throw new RuntimeException("Invalid response received when fetching tags for image " + image);
+      }
+
+      tags.addAll(tagsArr.valueStream().map(JsonNode::asText).toList());
+
+      Optional<String> nextLink = response.headers().firstValue("Link");
+      if (nextLink.isEmpty()) {
+        more = false;
+        LOGGER.debug("Fetched all tags for '{}', total tags: {}", image, tags.size());
+      } else {
+        // Format of link header: </v2/library/nginx/tags/list?n=1000&last=tag>; rel="next"
+        String link = nextLink.orElseThrow();
+        link = link.substring(1, link.indexOf('>'));
+        url = new URI(getRegistryUrl(image)).resolve(link);
+        LOGGER.debug("Fetching more tags from {}, got Link header: {}", url, nextLink.orElseThrow());
+      }
+    }
+
+    return tags;
   }
 
   private String getBearerHeader(URI authUrl, String registryUrl)

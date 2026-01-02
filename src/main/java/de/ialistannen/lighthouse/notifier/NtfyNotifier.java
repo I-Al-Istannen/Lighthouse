@@ -3,6 +3,7 @@ package de.ialistannen.lighthouse.notifier;
 import com.google.common.base.Throwables;
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
+import de.ialistannen.lighthouse.model.LighthouseTagUpdate;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -83,6 +84,25 @@ public class NtfyNotifier implements Notifier {
     send(buildUpdateRequest(updates.size()));
   }
 
+  @Override
+  public void notifyTags(List<LighthouseTagUpdate> tagUpdates) {
+    if (tagUpdates.isEmpty()) {
+      return;
+    }
+    LOGGER.info("Notifying for {} tag update(s) in ntfy", tagUpdates.size());
+
+    for (LighthouseTagUpdate tagUpdate : tagUpdates) {
+      HttpRequest request = HttpRequest.newBuilder(url)
+        .header("X-Title", "Lighthouse Version Upgrade" + hostname.map(h -> " (" + h + ")").orElse(""))
+        .header("X-Tags", "arrow_up,package")
+        .header("X-Icon", LIGHTHOUSE_LOGO)
+        .header("X-Click", "https://hub.docker.com/r/%s".formatted(tagUpdate.imageIdentifier().image()))
+        .POST(BodyPublishers.ofString(buildTagUpdatePayload(tagUpdate)))
+        .build();
+      send(request);
+    }
+  }
+
   private void send(HttpRequest request) {
     try {
       LOGGER.debug("Sending webhook {}", request.bodyPublisher().orElse(BodyPublishers.noBody()));
@@ -111,6 +131,23 @@ public class NtfyNotifier implements Notifier {
         String.join(", ", image.sourceImageNames()),
         image.remoteImageMetadata().map(m -> "%s by %s".formatted(m.updateTime(), m.updatedBy())).orElse("unknown"),
         image.remoteManifestDigest()
+      );
+  }
+
+  private String buildTagUpdatePayload(LighthouseTagUpdate tagUpdate) {
+    return """
+      Manual update required - Tag/version change
+      
+      Image: %s
+      Current: %s → New: %s
+      Containers: %s
+      Metadata: %s
+      """.formatted(
+        tagUpdate.imageIdentifier().image(),
+        tagUpdate.currentTag(),
+        tagUpdate.newTag(),
+        String.join(", ", tagUpdate.names()),
+        tagUpdate.remoteImageMetadata().map(m -> "%s by %s".formatted(m.updateTime(), m.updatedBy())).orElse("unknown")
       );
   }
 

@@ -4,6 +4,7 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import de.ialistannen.lighthouse.model.LighthouseContainerUpdate;
 import de.ialistannen.lighthouse.model.LighthouseImageUpdate;
+import de.ialistannen.lighthouse.model.LighthouseTagUpdate;
 import de.ialistannen.lighthouse.registry.RemoteImageMetadata;
 import java.util.List;
 import java.util.Optional;
@@ -106,6 +107,77 @@ public class DiscordBotNotifier extends ListenerAdapter implements Notifier {
     }
 
     sendActionRows(updates);
+  }
+
+  @Override
+  public void notifyTags(List<LighthouseTagUpdate> tagUpdates) {
+    if (tagUpdates.isEmpty()) {
+      return;
+    }
+
+    LOGGER.info("Notifying for {} tag update(s)", tagUpdates.size());
+
+    for (List<LighthouseTagUpdate> batch : Lists.partition(tagUpdates, Message.MAX_EMBED_COUNT)) {
+      sendTagUpdateMessage(
+        new MessageCreateBuilder()
+          .setEmbeds(batch.stream().map(this::buildTagUpdateEmbed).map(EmbedBuilder::build).toList()),
+        batch
+      );
+    }
+  }
+
+  private void sendTagUpdateMessage(MessageCreateBuilder messageBuilder, List<LighthouseTagUpdate> tagUpdates) {
+    mention.ifPresent(mention -> messageBuilder.setContent(
+      DiscordNotifierHelper.getExpandedMentionTextForTagUpdates(mention, mentionText, tagUpdates)
+    ));
+
+    channel.sendMessage(messageBuilder.build()).queue();
+  }
+
+  private EmbedBuilder buildTagUpdateEmbed(LighthouseTagUpdate tagUpdate) {
+    EmbedBuilder embedBuilder = new EmbedBuilder();
+
+    embedBuilder.setTitle(
+      tagUpdate.imageIdentifier().image(),
+      "https://hub.docker.com/r/%s".formatted(tagUpdate.imageIdentifier().image())
+    );
+    embedBuilder.setDescription("Tag update found.");
+    embedBuilder.setColor(0x00CED1);
+    embedBuilder.setFooter(getFooter());
+
+    embedBuilder.addField(new Field(
+      "Container names",
+      String.join(", ", tagUpdate.names()),
+      true
+    ));
+
+    embedBuilder.addField(new Field(
+      "Current version",
+      "`" + tagUpdate.currentTag() + "`",
+      true
+    ));
+
+    embedBuilder.addField(new Field(
+      "New version",
+      "`" + tagUpdate.newTag() + "`",
+      true
+    ));
+
+    tagUpdate.remoteImageMetadata().ifPresent(metadata -> {
+      embedBuilder.addField(new Field(
+        "Update information",
+        "Updated <t:%s:R> by **%s**".formatted(
+          metadata.updateTime().getEpochSecond(),
+          metadata.updatedBy()
+        ),
+        false
+      ));
+      embedBuilder.setTimestamp(metadata.updateTime());
+    });
+
+    hostname.ifPresent(embedBuilder::setAuthor);
+
+    return embedBuilder;
   }
 
   private EmbedBuilder buildEmbed(LighthouseContainerUpdate update) {
