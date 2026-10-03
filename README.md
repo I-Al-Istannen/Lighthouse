@@ -26,7 +26,7 @@ the docker registry and then *also verifies*, that your container image is
 actually based on the most up-to-date version of the base image.
 
 If *Lighthouse* detects that the local reference base image is outdated, it
-will update the base image if you pass `----base-image-update pull_and_update`.
+will update the base image if you pass `--base-image-update pull_and_update`.
 Otherwise it will always tell you that the container is outdated if your base
 image is. If the container is based on an outdated image, it will notify you in
 discord.
@@ -56,42 +56,63 @@ this database is not lost when you recreate the container.
 - Keep a reference copy of the container's base image up-to-date
 - Notify you through a discord webhook if a container is based on an oudated
   base image
-- Supports metadata (who and when updated the image?) for Docker Hub images
+- Reads image metadata from OCI labels, GitHub release notes and Docker Hub
 - Supports checking for updates for images from arbitrary registries (if they
-  conform to standards and/or you have basic auth credentials for them in your
-  config)
+  conform to standards and/or you have credentials in your Docker config,
+  including credential helpers)
+- Supports notifications and update requests through ntfy
+- Optionally checks for newer image tags
 
 ## Usage
-```
+```text
 Watches for docker base image updates
 
-USAGE
-  lighthouse [OPTIONS] URL|TOKEN
+Usage: lighthouse [OPTIONS] <URL|TOKEN>
 
-PARAMETERS
-  URL|TOKEN  Discord webhook URL or discord bot token
+Arguments:
+  <URL|TOKEN>  Discord webhook URL, Discord bot token or ntfy topic URL
 
-OPTIONS
-  --check-times CRONTAB                            Check times in cron syntax (https://crontab.guru).
-                                                   Default: '23 08 * * *'
-  --mention MENTION                                Discord mention (e.g. '<@userid>')
-  --mention-text TEXT                              Text to send in Discord
-  --docker-config PATH                             Path to docker config.
-                                                   Default: /root/.docker/config.json
-  --hostname NAME                                  The hostname to mention in notifications
-  --base-image-update STRATEGY                     Whether to 'only_pull_unknown' base images or 'pull_and_update' them
-  --require-label                                  Ignore containers without 'lighthouse.enabled' label.
-                                                   Default: false
-  --notify-again                                   Notify you more than once about an image update.
-                                                   Default: false
-
-# For bot mode, ignore when using with a webhook URL
-
-  --bot-updater-docker-image IMAGE                 The name of the image to use for updating containers.
-                                                   Default: 'library/docker'
-  --bot-updater-mount BOT-UPDATER-MOUNT            The mounts for created updater containers
-  --bot-updater-entrypoint BOT-UPDATER-ENTRYPOINT  The binary to call in the updater container
-  --bot-channel-id BOT-CHANNEL-ID                  The channel id the bot should send updates to
+Options:
+      --check-times <CRONTAB>
+          Check times in cron syntax (https://crontab.guru) [default: "23 08 * * *"]
+      --check-on-start
+          Also check once right after starting
+      --mention <MENTION>
+          Discord mention (e.g. '<@userid>')
+      --mention-text <TEXT>
+          Text to send in Discord. '{IMAGES}' is replaced by the updated images
+      --docker-config <PATH>
+          Path to the docker config with registry credentials [default: ~/.docker/config.json]
+      --hostname <NAME>
+          The hostname to mention in notifications
+      --base-image-update <STRATEGY>
+          Whether to only pull unknown base images or also update outdated ones [default: only_pull_unknown] [possible values: only_pull_unknown, pull_and_update]
+      --require-label
+          Ignore containers without the 'lighthouse.enabled=true' label
+      --notify-again
+          Notify about an update every time it is found, not just once
+      --check-tag-updates
+          Check for newer version tags of containers with a 'lighthouse.tag-check.strategy' label
+      --ntfy
+          Use ntfy to send notifications and receive update requests
+      --github-token <TOKEN>
+          GitHub token for fetching release notes (raises the API rate limit) [env: GITHUB_TOKEN]
+      --insecure-registry <HOST>
+          Registry (host:port) to talk to over plain HTTP, can be repeated
+      --data-dir <PATH>
+          Directory for persistent state [default: data]
+      --bot-updater-docker-image <IMAGE>
+          The image to use for updating containers [default: docker]
+      --bot-updater-mount <MOUNT>
+          Mounts for the updater container ('source:dest[:options]'), can be repeated
+      --bot-updater-entrypoint <PATH>
+          The binary to call in the updater container. Enables updating from notifications
+      --bot-channel-id <ID>
+          The channel id the bot should send updates to
+  -h, --help
+          Print help (see more with '--help')
+  -V, --version
+          Print version
 ```
 
 You also should set the `lighthouse.instance` label on the lighthouse
@@ -102,17 +123,19 @@ with a space-separated list of the images having updates available.
 
 You can set the `LOG_LEVEL` environment variable to `DEBUG` to enable debug logging.
 
+With `--check-tag-updates` and the `lighthouse.tag-check.strategy=semver` label,
+Lighthouse reports newer version tags. Tag changes must be applied manually.
+
 ### As a discord bot
 
 When passing a bot token instead of a webhook url, *Lighthouse* will act as a
 full-fledged discord bot.
 You can obtain a token by creating a bot on
 https://discord.com/developers/applications.
-When *Lighthouse* acts as a bot and a bot updater docker image was specified,
-*Lighthouse* will show an "Update" button in discord.
-Once pressed, it will update all base images and then start an updater docker
-container with the given image and pass it all outdated container names as
-arguments.
+With `--bot-updater-entrypoint`, *Lighthouse* shows container selection menus and
+an "Update selected" button in Discord. Each button updates only the selected
+containers in its message: it pulls their base images, then starts the updater
+container and passes the selected container names as arguments.
 The updater image can then automatically rebuild and restart all affected
 containers, allowing you to apply updates right after seeing the notification
 in discord.
@@ -223,7 +246,6 @@ LABEL lighthouse.base=nginx:stable
 ```
 This ensures the lighthouse tag is always present and up to date.
 
-
 ## How it works
 
 ### Finding the base image of a container
@@ -246,8 +268,10 @@ copy for this reason, the local copy needs to be up-to-date, which
 *Lighthouse* automatically manages for you.
 
 ### Providing information about updates
-Once an update is found, *Lighthouse* will fetch up-to-date image information
-from docker hub, to ensure the notification message is useful.
+For new updates, *Lighthouse* reads the image's OCI labels for its version,
+source repository and revision. GitHub sources provide matching release notes;
+Docker Hub adds the upload time and uploader. Use `--github-token` to raise the
+GitHub API rate limit.
 
 ----
 
